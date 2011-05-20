@@ -27,9 +27,15 @@ class ByteQueueInsufficientData(Exception):
     pass
 
 class ByteQueue(object):
+    """
+    Clase para leer datos binarios y convertirlos a tipos de datos nativos.
+
+    Basada e inspirada en la idea de Maraxus, implementada en morgoao.
+    """
+
     __slots__ = ('data', 'pos', 'markpos', )
-    def __init__(self):
-        self.data = ""
+    def __init__(self, data=""):
+        self.data = data
         self.pos = 0
         self.markpos = 0
 
@@ -40,6 +46,15 @@ class ByteQueue(object):
         self.data += data
 
     def commit(self):
+        """
+        Destruye los bytes del buffer interno liberando la memoria 
+        desde el inicio del buffer hasta el puntero pos interno.
+        
+        Atencion: la funcion commit() no debe llamarse desde dentro
+        de la misma ByteQueue ya que no es posible saber precisamente
+        cuando hay que hacerlo.
+        """
+
         assert self.pos >= 0 and self.markpos >= 0
 
         if self.pos != 0:
@@ -48,27 +63,44 @@ class ByteQueue(object):
             self.markpos = 0
 
     def mark(self):
+        """
+        Guarda la marca de posicion actual por si hace falta hacer rollback
+        """
+
         self.markpos = self.pos
 
     def rollback(self):
+        """
+        Restaura la posicion de pos hacia la ultima guardada con mark.
+        """
+
         self.pos = self.markpos
 
-    def read(self, fmt):
+    def peekFmt(self, fmt):
+        """Lee desde pos sin avanzar el puntero pos"""
+
         tam = struct.calcsize(fmt)
+
         if tam > len(self):
             raise ByteQueueInsufficientData()
 
         try:
             # La funcion buffer() es como un slice[a:b] pero 
             # no hace una copia de los datos.
-            ret = struct.unpack(fmt, buffer(self.data, self.pos, tam))
-            self.pos += tam
-            return ret
+            return struct.unpack(fmt, buffer(self.data, self.pos, tam))
         except struct.error, e:
-            #raise ByteQueueInsufficientData()
             raise ByteQueueError(str(e))
 
+    def read(self, fmt):
+        """Lee desde pos avanzando el puntero pos"""
+
+        ret = self.peekFmt(fmt)
+        self.pos += struct.calcsize(fmt)
+        return ret
+
     def readRaw(self, cant=None):
+        """Lee cant bytes avanzando pos"""
+
         assert self.pos <= len(self.data)
 
         if cant is None:
@@ -77,9 +109,12 @@ class ByteQueue(object):
             raise ByteQueueInsufficientData()
 
         ret = self.data[self.pos:self.pos+cant]
-        self.pos -= cant
+        self.pos += cant
 
         return ret
+
+    def writeFmt(self, fmt, *args):
+        self.data += struct.pack(fmt, *args)
 
     def readInt8(self):
         return self.read('<b')[0]
@@ -90,17 +125,18 @@ class ByteQueue(object):
     def readInt32(self):
         return self.read('<l')[0]
 
+    def readFloat(self):
+        return self.read('<f')[0]
+
+    def readDouble(self):
+        return self.read('<d')[0]
+
     def readString(self):
         cant = self.readInt16()
         return self.readRaw(cant)
 
-    def peekFmt(self, fmt):
-        tam = struct.calcsize(fmt)
-
-        if tam > len(self):
-            raise ByteQueueInsufficientData()
-
-        return struct.unpack(fmt, buffer(self.data, self.pos, tam))
+    def readStringFixed(self, cant):
+        return self.readRaw(cant)
 
     def peekInt8(self):
         return self.peekFmt('<b')[0]
@@ -111,8 +147,17 @@ class ByteQueue(object):
     def peekInt32(self):
         return self.peekFmt('<l')[0]
 
-    def writeFmt(self, fmt, *args):
-        self.data += struct.pack(fmt, *args)
+    def peekFloat(self):
+        return self.peekFmt('<f')[0]
+
+    def peekDouble(self):
+        return self.peekFmt('<d')[0]
+
+    def peekString(self):
+        cant = self.peekInt16()
+        if len(self) < (cant + 2):
+            raise ByteQueueInsufficientData()
+        return self.data[self.pos+2:self.pos+2+cant]
 
     def writeInt8(self, n):
         self.writeFmt('<b', n)
@@ -123,9 +168,20 @@ class ByteQueue(object):
     def writeInt32(self, n):
         self.writeFmt('<l', n)
 
+    def writeFloat(self, n):
+        self.writeFmt('<f', n)
+
+    def writeDouble(self, n):
+        self.writeFmt('<d', n)
+
     def writeString(self, s):
         if type(s) is unicode:
             s = s.encode('utf-8')
         self.writeInt16(len(s))
+        self.data += s
+
+    def writeStringFixed(self, s):
+        if type(s) is unicode:
+            s = s.encode('utf-8')
         self.data += s
 

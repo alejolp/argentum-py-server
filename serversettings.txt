@@ -1,0 +1,22 @@
+# Archivo de configuracion de AONX Server.
+# Las rutas son relativas al pwd desde donde se inicia.
+
+[Core]
+; Puerto de escucha TCP.
+ListenPort: 7666
+
+; Maxima cantidad de conexiones TCP.
+ConnectionsCountLimit: 10
+
+; Maxima cantidad de jugadores logeados.
+PlayersCountLimit: 1
+
+; Ruta de acceso a los mapas.
+MapsFilesPath: ../ServerResources/Maps
+
+; Cantidad de mapas.
+MapCount: 290
+
+; Modo de carga de mapas: "Lazy" o "Full".
+MapLoadingMode: Lazy
+
