@@ -19,7 +19,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import sys, datetime, gc
+import sys, datetime, gc, re
 from ConfigParser import SafeConfigParser
 
 from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
@@ -47,6 +47,47 @@ from twisted.internet import reactor, task
 # ---
 
 WELCOME_MSG = "Bienvenido al servidor AONX - visite www.aonx.com.ar"
+
+# ---
+
+VALID_PLAYER_NAME = r'^[ a-zA-Z]+$'
+
+def isValidPlayerName(name):
+    """
+    Un nombre válido:
+
+    - Tiene entre 3 y 32 caracteres.
+    - No tiene dos espacios consecutivos.
+    - No tiene espacios al inicio ni final.
+    - Solo esta compuesto por letras y espacios.
+    - No lleva acentos ni simbolos especiales.
+
+    Nombres inválidos:
+
+    - "Un"
+    - "Juan  Pedro"
+    - " Juan"
+    - "Juan!"
+    - "Raúl"
+
+    Nombres válidos:
+
+    - "Juan Pedro Marcos De Los Palotes"
+    - "Raul"
+    """
+
+    if len(name) > 32 or len(name) < 3:
+        return False
+
+    if '  ' in name or name.strip() != name:
+        return False
+
+    if re.match(VALID_PLAYER_NAME, name) is None:
+        return False
+
+    return True
+
+# ---
 
 def debug_print(*args):
     print "[debug] ",
@@ -132,12 +173,19 @@ class ClientCommandsDecoder(object):
         playerVers = '%d.%d.%d' % (buf.readInt8(), buf.readInt8(),\
             buf.readInt8())
 
-        playersLimit = ServerConfig.getint('Core', 'PlayersCountLimit')
+        error = False
 
-        if len(players) >= playersLimit:
-            prot.loseConnection()
+        if not isValidPlayerName(playerName):
+            error = True
+            debug_print("Nombre invalido:", repr(playerName))
+        elif gameServer.playersLimitReached():
+            error = True
         else:
+            # La instancia de Player se crea recien cuando es válido.
             prot.player = Player(prot, playerName)
+
+        if error:
+            prot.loseConnection()
 
     def handleCmdTalk(self, prot, buf):
         pass
@@ -211,15 +259,15 @@ class AoProtocol(Protocol):
             self._handleData()
 
     def connectionMade(self):
-        connLimit = ServerConfig.getint('Core', 'ConnectionsCountLimit')
-
-        if len(connections) >= connLimit:
-            self.loseConnection()
+        if not gameServer.connectionsLimitReached():
+            gameServer.connectionMade(self)
         else:
-            connections.add(self)
+            self.loseConnection()
 
     def connectionLost(self, reason):
         debug_print("connectionLost")
+
+        # Todo el codigo de limpieza de la conexion debe ir en loseConnection.
 
         if not self._ao_closing:
             self.loseConnection()
@@ -228,6 +276,7 @@ class AoProtocol(Protocol):
         try:
             cmdDecoder.handleData(self)
         except CriticalDecoderException, e:
+            debug_print("CriticalDecoderException")
             self.loseConnection()
 
     def sendData(self, data):
@@ -240,9 +289,7 @@ class AoProtocol(Protocol):
         if not self._ao_closing:
             debug_print("loseConnection")
             self._ao_closing = True
-
-            if self in connections:
-                connections.remove(self)
+            gameServer.connectionLost(self)
 
             self.transport.loseConnection()
             if self.player is not None:
@@ -250,6 +297,53 @@ class AoProtocol(Protocol):
 
 class AoProtocolFactory(Factory):
     protocol = AoProtocol
+
+class GameServer(object):
+    def __init__(self):
+        self._players = set()
+        self._playersByName = {}
+        self._connections = set()
+
+    def playersLimitReached(self):
+        playersLimit = ServerConfig.getint('Core', 'PlayersCountLimit')
+        if len(self._players) >= playersLimit:
+            debug_print("Limite de jugadores alcanzado: %d" % playersLimit)
+            return True
+        return False
+
+    def connectionsLimitReached(self):
+        connLimit = ServerConfig.getint('Core', 'ConnectionsCountLimit')
+        if len(self._connections) >= connLimit:
+            debug_print("Limite de conexiones alcanzado: %d" % connLimit)
+            return True
+        return False
+
+    def playerJoin(self, p):
+        self._players.add(p)
+        self._playersByName[p.playerName.lower()] = p
+
+    def playerLeave(self, p):
+        self._players.remove(p)
+        del self._playersByName[p.playerName.lower()]
+
+    def playerRename(self, p):
+        """Warning: O(n)"""
+        for k, v in self._playersByName.items():
+            if v == p:
+                oldName = k
+                break
+        del self._playersByName[oldName]
+        self._playersByName[p.playerName.lower()] = p
+
+    def connectionMade(self, c):
+        self._connections.add(c)
+
+    def connectionLost(self, c):
+        if c in self._connections:
+            self._connections.remove(c)
+
+    def playerByName(self, playerName):
+        return self._playersByName[playerName.lower()]
 
 class Player(object):
     """Un jugador"""
@@ -267,12 +361,12 @@ class Player(object):
         self.cmdout.sendLogged(0)
         self.cmdout.sendConsoleMsg(WELCOME_MSG)
 
-        players.add(self)
+        gameServer.playerJoin(self)
 
     def quit(self):
         if not self.closing:
             self.closing = True
-            players.remove(self)
+            gameServer.playerLeave(self)
 
             self.prot.loseConnection()
 
@@ -305,8 +399,7 @@ class GameMapList(object):
 ServerConfig = None     # Configuracion del servidor.
 cmdDecoder = None       # Handler para recibir paquetes de los clientes
 mapData = None          # Lista de mapas
-players = set()         # Lista de jugadores
-connections = set()     # Lista de conexiones
+gameServer = None
 
 # Timer
 
@@ -343,24 +436,29 @@ def loadMaps():
         raise Exception("Opcion no reconocida: MapLoadingMode=" \
             + mapLoadingMode)
 
-def initServer():
-    global ServerConfig, cmdDecoder
+def loadServerConfig():
+    global ServerConfig
 
     ServerConfig = SafeConfigParser()
     ServerConfig.read([sys.argv[1]])
-    
+
+def initServer():
+    global cmdDecoder, gameServer
+
+    loadServerConfig()
+
     cmdDecoder = ClientCommandsDecoder()
+    gameServer = GameServer()
 
 def runServer():
-    reactor.listenTCP(ServerConfig.getint('Core', 'ListenPort'), \
-        AoProtocolFactory())
+    listenPort = ServerConfig.getint('Core', 'ListenPort')
+    reactor.listenTCP(listenPort, AoProtocolFactory())
 
     t = task.LoopingCall(onTimer)
     t.start(1)
 
     print "Escuchando en el puerto %d, reactor: %s" % ( \
-        ServerConfig.getint('Core', 'ListenPort'), \
-        reactor.__class__.__name__)
+        listenPort, reactor.__class__.__name__)
     print "Para cerrar el servidor presionar Control-C."
 
     reactor.run()

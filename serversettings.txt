@@ -1,15 +1,17 @@
 # Archivo de configuracion de AONX Server.
 # Las rutas son relativas al pwd desde donde se inicia.
+# El formato de este archivo es el que acepta el modulo ConfigParser de Python.
+#
 
 [Core]
 ; Puerto de escucha TCP.
 ListenPort: 7666
 
 ; Maxima cantidad de conexiones TCP.
-ConnectionsCountLimit: 10
+ConnectionsCountLimit: 30
 
 ; Maxima cantidad de jugadores logeados.
-PlayersCountLimit: 1
+PlayersCountLimit: 30
 
 ; Ruta de acceso a los mapas.
 MapsFilesPath: ../ServerResources/Maps
