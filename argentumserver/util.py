@@ -20,4 +20,9 @@ class MyConfigParser(SafeConfigParser):
 
     def get(self, section, option, *args, **kwargs):
         return SafeConfigParser.get(self, section.lower(), option.lower(), *args, **kwargs)
- 
+
+    def getint(self, section, option):
+        val = self.get(section, option)
+        if "'" in val:
+            val = val.split("'", 1)[0]
+        return int(val)

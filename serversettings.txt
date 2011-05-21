@@ -13,12 +13,18 @@ ConnectionsCountLimit: 30
 ; Maxima cantidad de jugadores logeados.
 PlayersCountLimit: 30
 
+; Ruta base de los recursos del servidor.
+BaseResourcesPath: ../ServerResources
+
 ; Ruta de acceso a los mapas.
-MapsFilesPath: ../ServerResources/Maps
+MapsFilesPath: %(BaseResourcesPath)s/Maps
 
 ; Cantidad de mapas.
 MapCount: 290
 
 ; Modo de carga de mapas: "Lazy" o "Full".
 MapLoadingMode: Lazy
+
+; Ruta de acceso a los dats.
+DatFilesPath: %(BaseResourcesPath)s/Dat
 

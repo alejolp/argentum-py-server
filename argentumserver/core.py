@@ -19,12 +19,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import sys, datetime, gc, re
+import os, sys, datetime, gc, re
 from ConfigParser import SafeConfigParser
 
 from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
 from bytequeue import ByteQueue, ByteQueueError, ByteQueueInsufficientData
-import mapfile
+import mapfile, datfile
 
 try:
     import twisted
@@ -50,7 +50,7 @@ WELCOME_MSG = "Bienvenido al servidor AONX - visite www.aonx.com.ar"
 
 # ---
 
-VALID_PLAYER_NAME = r'^[ a-zA-Z]+$'
+VALID_PLAYER_NAME = re.compile(r'^[ a-zA-Z]+$')
 
 def isValidPlayerName(name):
     """
@@ -82,7 +82,7 @@ def isValidPlayerName(name):
     if '  ' in name or name.strip() != name:
         return False
 
-    if re.match(VALID_PLAYER_NAME, name) is None:
+    if VALID_PLAYER_NAME.match(name) is None:
         return False
 
     return True
@@ -398,8 +398,12 @@ class GameMapList(object):
 
 ServerConfig = None     # Configuracion del servidor.
 cmdDecoder = None       # Handler para recibir paquetes de los clientes
-mapData = None          # Lista de mapas
 gameServer = None
+
+mapData = None          # Lista de mapas
+objData = None
+npcData = None
+hechData = None
 
 # Timer
 
@@ -411,7 +415,6 @@ def onTimer():
 
 def loadMaps():
     global mapData
-
 
     mapCount = ServerConfig.getint('Core', 'MapCount')
     mapLoadingMode = ServerConfig.get('Core', 'MapLoadingMode')
@@ -435,6 +438,20 @@ def loadMaps():
     else:
         raise Exception("Opcion no reconocida: MapLoadingMode=" \
             + mapLoadingMode)
+
+def loadFiles():
+    global objData, npcData, hechData
+
+    datFilesPath = ServerConfig.get('Core', 'DatFilesPath')
+
+    # Maps.
+    loadMaps()
+    
+    # Objs.
+    objData = datfile.loadObjDat(os.path.join(datFilesPath, 'obj.dat'))
+    npcData = datfile.loadNPCsDat(os.path.join(datFilesPath, 'NPCs.dat'))
+    hechData = datfile.loadHechizosDat(os.path.join(datFilesPath, \
+        'Hechizos.dat'))
 
 def loadServerConfig():
     global ServerConfig
@@ -484,7 +501,7 @@ def main():
     #
 
     initServer()
-    loadMaps()
+    loadFiles()
 
     #
 
