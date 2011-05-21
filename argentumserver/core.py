@@ -443,6 +443,9 @@ class GameServer(object):
     def playersList(self):
         return list(self._players)
 
+    def connectionsList(self):
+        return list(self._connections)
+
 class Player(object):
     """Un jugador"""
 
@@ -523,7 +526,7 @@ def onTimer10():
 
     # Timeouts de paquetes
 
-    for c in list(gameServer._connections):
+    for c in gameServer.connectionsList():
         if c.player is None:
             maxTime = 15
         else:
@@ -531,6 +534,10 @@ def onTimer10():
 
         if t - c.lastHandledPacket > maxTime:
             c.loseConnection()
+
+def onTimer60():
+    """Este timer se ejecuta cada 60 segundos."""
+    pass
 
 # Main
 
@@ -595,6 +602,7 @@ def runServer():
 
     task.LoopingCall(onTimer1).start(1)
     task.LoopingCall(onTimer10).start(10)
+    task.LoopingCall(onTimer60).start(60)
 
     print "Escuchando en el puerto %d, reactor: %s" % ( \
         listenPort, reactor.__class__.__name__)
