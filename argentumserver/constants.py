@@ -20,3 +20,6 @@
 
 WELCOME_MSG = "Bienvenido al servidor AONX - visite www.aonx.com.ar"
 
+TIMEOUT_NOT_LOGGED = 15
+TIMEOUT_YES_LOGGED = 5 * 60
+

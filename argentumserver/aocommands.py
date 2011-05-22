@@ -929,6 +929,8 @@ class ClientCommandsDecoder(object):
 class ServerCommandsEncoder(object):
     """
     Conjunto de funciones para generar comandos hacia el cliente.
+
+    Es un Wrapper afuera de AoProtocol.
     """
 
     __slots__ = ('buf', 'prot', )
@@ -941,31 +943,669 @@ class ServerCommandsEncoder(object):
         self.buf.writeInt8(serverPackets['ConsoleMsg'])
         self.buf.writeString(msg)
         self.buf.writeInt8(font)
-
         self.prot.flushOutBuf()
 
     def sendLogged(self, userClass):
         self.buf.writeInt8(serverPackets['Logged'])
         self.buf.writeInt8(userClass)
-
         self.prot.flushOutBuf()
 
-    def sendChangeMap(self, n, vers):
+    def sendChangeMap(self, mapNum, vers):
         self.buf.writeInt8(serverPackets['ChangeMap'])
-        self.buf.writeInt16(n)
+        self.buf.writeInt16(mapNum)
         self.buf.writeInt16(vers)
-
         self.prot.flushOutBuf()
 
-    def sendUserIndexInServer(self, n):
+    def sendUserIndexInServer(self, idx):
         self.buf.writeInt8(serverPackets['UserIndexInServer'])
-        self.buf.writeInt16(n)
+        self.buf.writeInt16(idx)
+        self.prot.flushOutBuf()
+
+    def sendUserCharIndexInServer(self, idx):
+        self.buf.writeInt8(serverPackets['UserCharIndexInServer'])
+        self.buf.writeInt16(idx)
+        self.prot.flushOutBuf()
+
+    def sendRemoveDialogs(self):
+        self.buf.writeInt8(serverPackets['RemoveDialogs'])
+        self.prot.flushOutBuf()
+
+    def sendRemoveCharDialog(self, chridx):
+        self.buf.writeInt8(serverPackets['RemoveCharDialog'])
+        self.buf.writeInt16(chridx)
+        self.prot.flushOutBuf()
+
+    def sendNavigateToggle(self):
+        self.buf.writeInt8(serverPackets['NavigateToggle'])
+        self.prot.flushOutBuf()
+
+    def sendDisconnect(self):
+        self.buf.writeInt8(serverPackets['Disconnect'])
+        self.prot.flushOutBuf()
+
+    def sendCommerceEnd(self):
+        self.buf.writeInt8(serverPackets['CommerceEnd'])
+        self.prot.flushOutBuf()
+
+    def sendBankEnd(self):
+        self.buf.writeInt8(serverPackets['BankEnd'])
+        self.prot.flushOutBuf()
+
+    def sendCommerceInit(self):
+        self.buf.writeInt8(serverPackets['CommerceInit'])
+        self.prot.flushOutBuf()
+
+    def sendBankInit(self):
+        self.buf.writeInt8(serverPackets['BankInit'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
 
         self.prot.flushOutBuf()
 
-    def sendUserCharIndexInServer(self, n):
-        self.buf.writeInt8(serverPackets['UserCharIndexInServer'])
-        self.buf.writeInt16(n)
+    def sendUserCommerceInit(self):
+        self.buf.writeInt8(serverPackets['UserCommerceInit'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUserCommerceEnd(self):
+        self.buf.writeInt8(serverPackets['UserCommerceEnd'])
+        self.prot.flushOutBuf()
+
+    def sendUserOfferConfirm(self):
+        self.buf.writeInt8(serverPackets['UserOfferConfirm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCommerceChat(self, chat, font):
+        self.buf.writeInt8(serverPackets['CommerceChat'])
+        self.buf.writeString(chat)
+        self.buf.writeInt8(font)
+        self.prot.flushOutBuf()
+
+    def sendShowBlacksmithForm(self):
+        self.buf.writeInt8(serverPackets['ShowBlacksmithForm'])
+        self.prot.flushOutBuf()
+
+    def sendShowCarpenterForm(self):
+        self.buf.writeInt8(serverPackets['ShowCarpenterForm'])
+        self.prot.flushOutBuf()
+
+    def sendUpdateSta(self, sta):
+        self.buf.writeInt8(serverPackets['UpdateSta'])
+        self.buf.writeInt16(sta)
+        self.prot.flushOutBuf()
+
+    def sendUpdateMana(self, mana):
+        self.buf.writeInt8(serverPackets['UpdateMana'])
+        self.buf.writeInt16(mana)
+        self.prot.flushOutBuf()
+
+    def sendUpdateHP(self, hp):
+        self.buf.writeInt8(serverPackets['UpdateHP'])
+        self.buf.writeInt16(hp)
+        self.prot.flushOutBuf()
+
+    def sendUpdateGold(self, gld):
+        self.buf.writeInt8(serverPackets['UpdateGold'])
+        self.buf.writeInt32(gld)
+        self.prot.flushOutBuf()
+
+    def sendUpdateBankGold(self, gld):
+        self.buf.writeInt8(serverPackets['UpdateBankGold'])
+        self.buf.writeInt32(gld)
+        self.prot.flushOutBuf()
+
+    def sendUpdateExp(self, exp):
+        self.buf.writeInt8(serverPackets['UpdateExp'])
+        self.buf.writeInt32(exp)
+        self.prot.flushOutBuf()
+
+    def sendPosUpdate(self, x, y):
+        self.buf.writeInt8(serverPackets['PosUpdate'])
+        self.buf.writeInt8(x)
+        self.buf.writeInt8(y)
+        self.prot.flushOutBuf()
+
+    def sendChatOverHead(self, chat, chridx, color):
+        self.buf.writeInt8(serverPackets['ChatOverHead'])
+        self.buf.writeString(chat)
+        self.buf.writeInt16(chridx)
+
+        self.buf.writeInt8(color & 0xff)
+        self.buf.writeInt8((color >> 8) & 0xff)
+        self.buf.writeInt8((color >> 16) & 0xff)
+
+        self.prot.flushOutBuf()
+
+    def sendGuildChat(self):
+        self.buf.writeInt8(serverPackets['GuildChat'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowMessageBox(self, msg):
+        self.buf.writeInt8(serverPackets['ShowMessageBox'])
+        self.buf.writeString(msg)
+        self.prot.flushOutBuf()
+
+    def sendCharacterCreate(self):
+        self.buf.writeInt8(serverPackets['CharacterCreate'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCharacterRemove(self, chridx):
+        self.buf.writeInt8(serverPackets['CharacterRemove'])
+        self.bug.writeInt16(chridx)
+        self.prot.flushOutBuf()
+
+    def sendCharacterChangeNick(self):
+        self.buf.writeInt8(serverPackets['CharacterChangeNick'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCharacterMove(self, chridx, x, y):
+        self.buf.writeInt8(serverPackets['CharacterMove'])
+        self.buf.writeInt16(chridx)
+        self.buf.writeInt8(x)
+        self.buf.writeInt8(y)
+        self.prot.flushOutBuf()
+
+    def sendForceCharMove(self, heading):
+        self.buf.writeInt8(serverPackets['ForceCharMove'])
+        self.buf.writeInt8(heading)
+        self.prot.flushOutBuf()
+
+    def sendCharacterChange(self):
+        self.buf.writeInt8(serverPackets['CharacterChange'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendObjectCreate(self):
+        self.buf.writeInt8(serverPackets['ObjectCreate'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendObjectDelete(self):
+        self.buf.writeInt8(serverPackets['ObjectDelete'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendBlockPosition(self):
+        self.buf.writeInt8(serverPackets['BlockPosition'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendPlayMidi(self):
+        self.buf.writeInt8(serverPackets['PlayMidi'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendPlayWave(self):
+        self.buf.writeInt8(serverPackets['PlayWave'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendguildList(self):
+        self.buf.writeInt8(serverPackets['guildList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendAreaChanged(self):
+        self.buf.writeInt8(serverPackets['AreaChanged'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendPauseToggle(self):
+        self.buf.writeInt8(serverPackets['PauseToggle'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendRainToggle(self):
+        self.buf.writeInt8(serverPackets['RainToggle'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCreateFX(self):
+        self.buf.writeInt8(serverPackets['CreateFX'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateUserStats(self):
+        self.buf.writeInt8(serverPackets['UpdateUserStats'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendWorkRequestTarget(self):
+        self.buf.writeInt8(serverPackets['WorkRequestTarget'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendChangeInventorySlot(self):
+        self.buf.writeInt8(serverPackets['ChangeInventorySlot'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendChangeBankSlot(self):
+        self.buf.writeInt8(serverPackets['ChangeBankSlot'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendChangeSpellSlot(self):
+        self.buf.writeInt8(serverPackets['ChangeSpellSlot'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendAtributes(self):
+        self.buf.writeInt8(serverPackets['Atributes'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendBlacksmithWeapons(self):
+        self.buf.writeInt8(serverPackets['BlacksmithWeapons'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendBlacksmithArmors(self):
+        self.buf.writeInt8(serverPackets['BlacksmithArmors'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCarpenterObjects(self):
+        self.buf.writeInt8(serverPackets['CarpenterObjects'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendRestOK(self):
+        self.buf.writeInt8(serverPackets['RestOK'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendErrorMsg(self, msg):
+        self.buf.writeInt8(serverPackets['ErrorMsg'])
+        self.buf.writeString(msg)
+        self.prot.flushOutBuf()
+
+    def sendBlind(self):
+        self.buf.writeInt8(serverPackets['Blind'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendDumb(self):
+        self.buf.writeInt8(serverPackets['Dumb'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowSignal(self):
+        self.buf.writeInt8(serverPackets['ShowSignal'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendChangeNPCInventorySlot(self):
+        self.buf.writeInt8(serverPackets['ChangeNPCInventorySlot'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateHungerAndThirst(self):
+        self.buf.writeInt8(serverPackets['UpdateHungerAndThirst'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendFame(self):
+        self.buf.writeInt8(serverPackets['Fame'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendMiniStats(self):
+        self.buf.writeInt8(serverPackets['MiniStats'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendLevelUp(self):
+        self.buf.writeInt8(serverPackets['LevelUp'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendAddForumMsg(self):
+        self.buf.writeInt8(serverPackets['AddForumMsg'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowForumForm(self):
+        self.buf.writeInt8(serverPackets['ShowForumForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendSetInvisible(self):
+        self.buf.writeInt8(serverPackets['SetInvisible'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendDiceRoll(self):
+        self.buf.writeInt8(serverPackets['DiceRoll'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendMeditateToggle(self):
+        self.buf.writeInt8(serverPackets['MeditateToggle'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendBlindNoMore(self):
+        self.buf.writeInt8(serverPackets['BlindNoMore'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendDumbNoMore(self):
+        self.buf.writeInt8(serverPackets['DumbNoMore'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendSendSkills(self):
+        self.buf.writeInt8(serverPackets['SendSkills'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendTrainerCreatureList(self):
+        self.buf.writeInt8(serverPackets['TrainerCreatureList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendguildNews(self):
+        self.buf.writeInt8(serverPackets['guildNews'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendOfferDetails(self):
+        self.buf.writeInt8(serverPackets['OfferDetails'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendAlianceProposalsList(self):
+        self.buf.writeInt8(serverPackets['AlianceProposalsList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendPeaceProposalsList(self):
+        self.buf.writeInt8(serverPackets['PeaceProposalsList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendCharacterInfo(self):
+        self.buf.writeInt8(serverPackets['CharacterInfo'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendGuildLeaderInfo(self):
+        self.buf.writeInt8(serverPackets['GuildLeaderInfo'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendGuildMemberInfo(self):
+        self.buf.writeInt8(serverPackets['GuildMemberInfo'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendGuildDetails(self):
+        self.buf.writeInt8(serverPackets['GuildDetails'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowGuildFundationForm(self):
+        self.buf.writeInt8(serverPackets['ShowGuildFundationForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendParalizeOK(self):
+        self.buf.writeInt8(serverPackets['ParalizeOK'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowUserRequest(self):
+        self.buf.writeInt8(serverPackets['ShowUserRequest'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendTradeOK(self):
+        self.buf.writeInt8(serverPackets['TradeOK'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendBankOK(self):
+        self.buf.writeInt8(serverPackets['BankOK'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendChangeUserTradeSlot(self):
+        self.buf.writeInt8(serverPackets['ChangeUserTradeSlot'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendSendNight(self):
+        self.buf.writeInt8(serverPackets['SendNight'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendPong(self):
+        self.buf.writeInt8(serverPackets['Pong'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateTagAndStatus(self):
+        self.buf.writeInt8(serverPackets['UpdateTagAndStatus'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendSpawnList(self):
+        self.buf.writeInt8(serverPackets['SpawnList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowSOSForm(self):
+        self.buf.writeInt8(serverPackets['ShowSOSForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowMOTDEditionForm(self):
+        self.buf.writeInt8(serverPackets['ShowMOTDEditionForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowGMPanelForm(self):
+        self.buf.writeInt8(serverPackets['ShowGMPanelForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUserNameList(self):
+        self.buf.writeInt8(serverPackets['UserNameList'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowGuildAlign(self):
+        self.buf.writeInt8(serverPackets['ShowGuildAlign'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendShowPartyForm(self):
+        self.buf.writeInt8(serverPackets['ShowPartyForm'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateStrenghtAndDexterity(self):
+        self.buf.writeInt8(serverPackets['UpdateStrenghtAndDexterity'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateStrenght(self):
+        self.buf.writeInt8(serverPackets['UpdateStrenght'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendUpdateDexterity(self):
+        self.buf.writeInt8(serverPackets['UpdateDexterity'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendAddSlots(self):
+        self.buf.writeInt8(serverPackets['AddSlots'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendMultiMessage(self):
+        self.buf.writeInt8(serverPackets['MultiMessage'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+
+    def sendStopWorking(self):
+        self.buf.writeInt8(serverPackets['StopWorking'])
+        self.prot.flushOutBuf()
+
+    def sendCancelOfferItem(self):
+        self.buf.writeInt8(serverPackets['CancelOfferItem'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
 
         self.prot.flushOutBuf()
 

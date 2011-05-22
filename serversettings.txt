@@ -10,6 +10,9 @@ ListenPort: 7666
 ; Maxima cantidad de conexiones TCP.
 ConnectionsCountLimit: 30
 
+; Maxima cantidad de conexiones por IP.
+ConnectionsCountLimitPerIP: 5
+
 ; Maxima cantidad de jugadores logeados.
 PlayersCountLimit: 30
 

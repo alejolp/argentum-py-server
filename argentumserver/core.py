@@ -26,6 +26,7 @@ from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
 from bytequeue import ByteQueue, ByteQueueError, ByteQueueInsufficientData
 from aocommands import *
 from util import debug_print
+from constants import *
 
 import mapfile, datfile, aoprotocol, corevars
 
@@ -62,6 +63,8 @@ class AoProtocol(Protocol):
         self._ao_inbuff = ByteQueue()
         self.outbuf = ByteQueue()
 
+        self._peer = None
+
         # En medio de una desconexion.
         self._ao_closing = False
         self.lastHandledPacket = int(time.time())
@@ -92,6 +95,12 @@ class AoProtocol(Protocol):
 
         if not self._ao_closing:
             self.loseConnection()
+
+    def getPeer(self):
+        # host, port, type
+        if self._peer is None:
+            self._peer = self.transport.getPeer()
+        return self._peer
 
     def _handleData(self):
         try:
@@ -125,8 +134,11 @@ class GameServer(object):
     def __init__(self):
         self._players = set()
         self._playersByName = {}
-        self._connections = set()
         self._playersByChar = [None]
+
+        self._connections = set()
+        self._ipsCounter = {}
+
         self._nextCharIdx = collections.deque()
         self._playersLoginCounter = 0
 
@@ -174,15 +186,30 @@ class GameServer(object):
     def connectionMade(self, c):
         self._connections.add(c)
 
+        ip = c.getPeer().host
+        self._ipsCounter[ip] = self._ipsCounter.get(ip, 0) + 1
+
+        if self._ipsCounter[ip] > ServerConfig.getint('Core', 'ConnectionsCountLimitPerIP'):
+            c.loseConnection()
+
     def connectionLost(self, c):
         if c in self._connections:
             self._connections.remove(c)
+
+            ip = c.getPeer().host
+            self._ipsCounter[ips] = self._ipsCounter[ips] - 1
+            assert self._ipsCounter[ips] >= 0
+
+            if self._ipsCounter[ips] == 0:
+                del self._ipsCounter[ips]
 
     def playerByName(self, playerName):
         return self._playersByName[playerName.lower()]
 
     def playersCount(self):
         assert len(self._players) == len(self._playersByName)
+        assert len(self._players) == len(self._playersByChar)
+
         return len(self._players)
 
     def nextCharIdx(self):
@@ -241,9 +268,9 @@ def onTimer10():
 
     for c in gameServer.connectionsList():
         if c.player is None:
-            maxTime = 15
+            maxTime = TIMEOUT_NOT_LOGGED
         else:
-            maxTime = 5 * 60
+            maxTime = TIMEOUT_YES_LOGGED
 
         if t - c.lastHandledPacket > maxTime:
             c.loseConnection()

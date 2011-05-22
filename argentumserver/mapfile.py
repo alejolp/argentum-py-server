@@ -81,14 +81,12 @@ def loadMapFile(mapNum, fileNameBasePath):
     fileNameDat = os.path.join(fileNameBasePath, 'Mapa%d.dat' % mapNum)
 
     # .map
-    f = open(fileNameMap, 'rb')
-    mapData = ByteQueue(f.read())
-    f.close()
+    with open(fileNameMap, 'rb') as f:
+        mapData = ByteQueue(f.read())
 
     # .inf
-    f = open(fileNameInf, 'rb')
-    infData = ByteQueue(f.read())
-    f.close()
+    with open(fileNameInf, 'rb') as f:
+        infData = ByteQueue(f.read())
 
     # .dat
     datData = MyConfigParser()

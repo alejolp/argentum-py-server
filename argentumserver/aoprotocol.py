@@ -259,11 +259,14 @@ clientPacketsStr = r"""    LoginExistingChar       'OLOGIN
 
 def makePacketList(s):
     """Genera la lista de paquetes a partir del gran string anterior"""
+
+    # Toma la primer palabra de cada linea y la numera.
+
     return dict([(x.strip().split(None, 1)[0], a) \
         for a, x in enumerate(s.split('\n'))])
 
 def generatePacketsHandler(packets, f):
-    """Generador de codigo para los handlers del cliente"""
+    """Generador de codigo para los handlers de los paquetes del cliente"""
     p = sorted(packets.items(), key=lambda x: x[1])
 
     for x in p:
@@ -274,6 +277,28 @@ def generatePacketsHandler(packets, f):
         raise CriticalDecoderException('Not Implemented')
         # FIXME
 """ % {'PacketName': x[0]})
+
+def generatePacketsSender(packets, f, listName='serverPackets'):
+    """Generador de codigo para los senders de los paquetes del servidor"""
+
+    p = sorted(packets.items(), key=lambda x: x[1])
+
+    for x in p:
+        f.write("""
+    def send%(PacketName)s(self):
+        self.buf.writeInt8(%(PacketsListName)s['%(PacketName)s'])
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+
+        self.prot.flushOutBuf()
+""" % {'PacketName': x[0], 'PacketsListName': listName})
+
+def generatePackets():
+    with open('paquetes-cliente.txt', 'wb') as f:
+        generatePacketsHandler(clientPackets, f)
+
+    with open('paquetes-servidor.txt', 'wb') as f:
+        generatePacketsSender(serverPackets, f)
 
 # Dado un nombre de paquete (Logged, etc.) devuelve el PacketID.
 serverPackets = makePacketList(serverPacketsStr)
