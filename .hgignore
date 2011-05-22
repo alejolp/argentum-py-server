@@ -1,3 +1,4 @@
 .pyc$
 .swp$
-
+^paquetes-cliente\.txt$
+^paquetes-servidor\.txt$
