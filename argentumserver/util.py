@@ -2,6 +2,12 @@
 
 from ConfigParser import SafeConfigParser
 
+def debug_print(*args):
+    print "[debug] ",
+    for a in args:
+        print a,
+    print
+
 class MyConfigParser(SafeConfigParser):
     def read(self, *args, **kwargs):
         ret = SafeConfigParser.read(self, *args, **kwargs)

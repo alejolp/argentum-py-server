@@ -117,7 +117,7 @@ class ByteQueue(object):
         self.data += struct.pack(fmt, *args)
 
     def readInt8(self):
-        return self.read('<b')[0]
+        return self.read('<B')[0]
 
     def readInt16(self):
         return self.read('<h')[0]
@@ -139,7 +139,7 @@ class ByteQueue(object):
         return self.readRaw(cant)
 
     def peekInt8(self):
-        return self.peekFmt('<b')[0]
+        return self.peekFmt('<B')[0]
 
     def peekInt16(self):
         return self.peekFmt('<h')[0]
@@ -160,7 +160,7 @@ class ByteQueue(object):
         return self.data[self.pos+2:self.pos+2+cant]
 
     def writeInt8(self, n):
-        self.writeFmt('<b', n)
+        self.writeFmt('<B', n)
 
     def writeInt16(self, n):
         self.writeFmt('<h', n)

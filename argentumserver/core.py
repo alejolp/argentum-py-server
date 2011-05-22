@@ -24,7 +24,10 @@ from ConfigParser import SafeConfigParser
 
 from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
 from bytequeue import ByteQueue, ByteQueueError, ByteQueueInsufficientData
-import mapfile, datfile
+from aocommands import *
+from util import debug_print
+
+import mapfile, datfile, aoprotocol, corevars
 
 try:
     import twisted
@@ -44,261 +47,12 @@ elif sys.platform == 'win32': # rulz!
 from twisted.internet.protocol import Protocol, Factory
 from twisted.internet import reactor, task
 
-# ---
+# Singletons
 
-WELCOME_MSG = "Bienvenido al servidor AONX - visite www.aonx.com.ar"
-
-# ---
-
-VALID_PLAYER_NAME = re.compile(r'^[ a-zA-Z]+$')
-
-def isValidPlayerName(name, create):
-    """
-    Un nombre válido:
-
-    - Tiene entre 3 y 32 caracteres.
-    - No tiene dos espacios consecutivos.
-    - No tiene espacios al inicio ni final.
-    - Solo esta compuesto por letras y espacios.
-    - No lleva acentos ni simbolos especiales.
-    - No es un nombre prohibido (solo para la creacion de pjs).
-
-    Nombres inválidos:
-
-    - "Un"
-    - "Juan  Pedro"
-    - " Juan"
-    - "Juan!"
-    - "Raúl"
-    - "Argentum"
-
-    Nombres válidos:
-
-    - "Juan Pedro Marcos De Los Palotes"
-    - "Raul"
-    """
-
-    if len(name) > 32 or len(name) < 3:
-        return False
-
-    if '  ' in name or name.strip() != name:
-        return False
-
-    if VALID_PLAYER_NAME.match(name) is None:
-        return False
-
-    if create and name.lower() in forbiddenNames:
-        return False
-
-    return True
+cmdDecoder = None       # Handler para recibir paquetes de los clientes
+ServerConfig = None
 
 # ---
-
-def debug_print(*args):
-    print "[debug] ",
-    for a in args:
-        print a,
-    print
-
-class CommandsDecoderException(Exception):
-    """Faltan datos para decodificar un comando del cliente"""
-    pass
-
-class CriticalDecoderException(Exception):
-    """Error critico en los datos del cliente; cerrar la conexion"""
-    pass
-
-class ClientCommandsDecoder(object):
-    """Conjunto de funciones para decodificar los datos que envia un cliente"""
-
-    def __init__(self):
-        self.cmds = {
-            clientPackets['LoginExistingChar'] : self.handleCmdLogin,
-            clientPackets['Talk']: self.handleCmdTalk,
-            clientPackets['Walk']: self.handleCmdWalk,
-            clientPackets['Online']: self.handleCmdOnline,
-            clientPackets['Quit']: self.handleCmdQuit,
-            clientPackets['Yell']: self.handleCmdYell,
-            clientPackets['Whisper']: self.handleCmdWhisper,
-            clientPackets['RequestPositionUpdate']: self.handleCmdRequestPositionUpdate,
-            }
-
-    def handleData(self, prot):
-        buf = prot._ao_inbuff
-        
-        """
-        Los comandos consumen los bytes del buffer de entrada, si faltan
-        datos se dispara un CommandsDecoderException o ByteQueueError.
-        """
-
-        try:
-            try:
-                while len(buf) > 0:
-                    cmd = buf.peekInt8()
-                    if cmd not in self.cmds:
-                        debug_print("cmd not in cmds:", cmd, \
-                            "should be:", clientPacketsFlip.get(cmd, '?'))
-                        raise CriticalDecoderException()
-
-                    # Marca la posicion actual por si hay que hacer rollback.
-                    buf.mark()
-
-                    # Invoca al handler del comando cmd.
-                    self.cmds[cmd](prot, buf)
-
-
-                # La operacion commit() destruye los datos del buffer,
-                # por lo que para llamarla tengo que estar seguro
-                # que se leyeron todos los datos del comando actual.
-                #
-                # Llamarla al final de cada comando puede llegar a ser
-                # lento si hay varios comandos encolados.
-
-                buf.commit()
-
-                prot.lastHandledPacket = time.time()
-
-            except:
-                buf.rollback()
-                raise
-        except ByteQueueError, e:
-            pass
-            debug_print("ByteQueueError", e)
-        except ByteQueueInsufficientData, e:
-            pass
-        except CommandsDecoderException, e:
-            pass
-            # debug_print("CommandsDecoderException")
-        except Exception, e:
-            debug_print("handleData Exception: ", e)
-            raise
-
-    def CheckLogged(fOrig):
-        """Decorator para verificar que el usuario esta logeado"""
-        def fNew(self, prot, buf):
-            if prot.player is None:
-                raise CriticalDecoderException()
-            return fOrig(self, prot, buf, prot.player)
-        return fNew
-
-    def CheckNotLogged(fOrig):
-        """Decorator para verificar que el usuario no esta logeado"""
-        def fNew(self, prot, buf):
-            if prot.player is not None:
-                raise CriticalDecoderException()
-            return fOrig(self, prot, buf)
-        return fNew
-
-    @CheckNotLogged
-    def handleCmdLogin(self, prot, buf):
-        # PacketID
-        cmd = buf.readInt8()
-
-        playerName = buf.readString()
-        playerPass = buf.readString()
-        playerVers = '%d.%d.%d' % (buf.readInt8(), buf.readInt8(),\
-            buf.readInt8())
-
-        error = False
-
-        if not isValidPlayerName(playerName, False):
-            error = True
-            debug_print("Nombre invalido:", repr(playerName))
-        elif gameServer.playersLimitReached():
-            error = True
-        else:
-            # La instancia de Player se crea recien cuando es válido.
-            prot.player = Player(prot, playerName)
-            prot.player.start()
-
-        if error:
-            prot.loseConnection()
-
-    @CheckLogged
-    def handleCmdTalk(self, prot, buf, player):
-        # PacketID
-        cmd = buf.readInt8()
-        msg = buf.readString()
-        # FIXME
-        for p in gameServer.playersList():
-            p.cmdout.sendConsoleMsg(player.playerName + " dice: " + msg)
-
-    @CheckLogged
-    def handleCmdWalk(self, prot, buf, player):
-        cmd = buf.readInt8()
-        heading = buf.readInt8()
-        # FIXME
-
-    @CheckLogged
-    def handleCmdOnline(self, prot, buf, player):
-        cmd = buf.readInt8()
-        player.cmdout.sendConsoleMsg("Online: %d" % gameServer.playersCount())
-
-    @CheckLogged
-    def handleCmdQuit(self, prot, buf, player):
-        cmd = buf.readInt8()
-        player.quit()
-
-    @CheckLogged
-    def handleCmdYell(self, prot, buf, player):
-        cmd = buf.readInt8()
-        msg = buf.readString()
-        # FIXME
-
-    @CheckLogged
-    def handleCmdWhisper(self, prot, buf, player):
-        cmd = buf.readInt8()
-        target = buf.readInt16()
-        msg = buf.readString()
-        # FIXME
-
-    @CheckLogged
-    def handleCmdRequestPositionUpdate(self, prot, buf, player):
-        cmd = buf.readInt8()
-        # FIXME
-
-class ServerCommandsEncoder(object):
-    """
-    Conjunto de funciones para generar comandos hacia el cliente.
-    """
-
-    __slots__ = ('buf', 'prot', )
-
-    def __init__(self, prot):
-        self.buf = prot.outbuf
-        self.prot = prot # K-Pax.
-
-    def sendConsoleMsg(self, msg, font=0):
-        self.buf.writeInt8(serverPackets['ConsoleMsg'])
-        self.buf.writeString(msg)
-        self.buf.writeInt8(font)
-
-        self.prot.flushOutBuf()
-
-    def sendLogged(self, userClass):
-        self.buf.writeInt8(serverPackets['Logged'])
-        self.buf.writeInt8(userClass)
-
-        self.prot.flushOutBuf()
-
-    def sendChangeMap(self, n, vers):
-        self.buf.writeInt8(serverPackets['ChangeMap'])
-        self.buf.writeInt16(n)
-        self.buf.writeInt16(vers)
-
-        self.prot.flushOutBuf()
-
-    def sendUserIndexInServer(self, n):
-        self.buf.writeInt8(serverPackets['UserIndexInServer'])
-        self.buf.writeInt16(n)
-
-        self.prot.flushOutBuf()
-
-    def sendUserCharIndexInServer(self, n):
-        self.buf.writeInt8(serverPackets['UserCharIndexInServer'])
-        self.buf.writeInt16(n)
-
-        self.prot.flushOutBuf()
 
 class AoProtocol(Protocol):
     """Interfaz con Twisted para el socket del cliente."""
@@ -324,6 +78,8 @@ class AoProtocol(Protocol):
             self._handleData()
 
     def connectionMade(self):
+        debug_print("connectionMade")
+
         if not gameServer.connectionsLimitReached():
             gameServer.connectionMade(self)
         else:
@@ -446,36 +202,6 @@ class GameServer(object):
     def connectionsList(self):
         return list(self._connections)
 
-class Player(object):
-    """Un jugador"""
-
-    def __init__(self, prot, playerName):
-        self.prot = prot
-        self.cmdout = prot.cmdout
-
-        self.playerName = playerName
-        self.currentMap = None
-        self.charIdx = None
-        self.userIdx = None
-
-        self.closing = False
-
-        gameServer.playerJoin(self)
-
-    def start(self):
-        self.cmdout.sendUserIndexInServer(self.userIdx)
-        self.cmdout.sendUserCharIndexInServer(self.charIdx)
-        self.cmdout.sendChangeMap(32, 0)
-        self.cmdout.sendLogged(0)
-        self.cmdout.sendConsoleMsg(WELCOME_MSG)
-
-    def quit(self):
-        if not self.closing:
-            self.closing = True
-            gameServer.playerLeave(self)
-
-            self.prot.loseConnection()
-
 class GameMap(object):
     """Un mapa"""
 
@@ -499,19 +225,6 @@ class GameMapList(object):
         if self.maps[n] is None:
             self.maps[n] = GameMap(n)
         return self.maps[n]
-
-# Globales
-
-ServerConfig = None     # Configuracion del servidor.
-cmdDecoder = None       # Handler para recibir paquetes de los clientes
-gameServer = None
-
-forbiddenNames = None
-
-mapData = None          # Lista de mapas
-objData = None
-npcData = None
-hechData = None
 
 # Timer
 
@@ -542,14 +255,12 @@ def onTimer60():
 # Main
 
 def loadMaps():
-    global mapData
-
     mapCount = ServerConfig.getint('Core', 'MapCount')
-    mapLoadingMode = ServerConfig.get('Core', 'MapLoadingMode')
+    mapLoadingMode = ServerConfig.get('Core', 'MapLoadingMode').lower()
 
-    mapData = GameMapList(mapCount)
+    corevars.mapData = GameMapList(mapCount)
 
-    if mapLoadingMode == "Full":
+    if mapLoadingMode == "full":
         print "Cargando mapas... "
 
         for x in xrange(1, 290+1):
@@ -561,31 +272,29 @@ def loadMaps():
 
         # Piedad, oh, piedad.
         gc.collect()
-    elif mapLoadingMode == "Lazy":
+    elif mapLoadingMode == "lazy":
         print "Carga de mapas en modo Lazy; se cargaran bajo demanda."
     else:
         raise Exception("Opcion no reconocida: MapLoadingMode=" \
             + mapLoadingMode)
 
 def loadFiles():
-    global objData, npcData, hechData, forbiddenNames
-
     datFilesPath = ServerConfig.get('Core', 'DatFilesPath')
     
     # Objs.
-    objData = datfile.loadObjDat(os.path.join(datFilesPath, 'obj.dat'))
-    npcData = datfile.loadNPCsDat(os.path.join(datFilesPath, 'NPCs.dat'))
-    hechData = datfile.loadHechizosDat(os.path.join(datFilesPath, \
+    corevars.objData = datfile.loadObjDat(os.path.join(datFilesPath, 'obj.dat'))
+    corevars.npcData = datfile.loadNPCsDat(os.path.join(datFilesPath, 'NPCs.dat'))
+    corevars.hechData = datfile.loadHechizosDat(os.path.join(datFilesPath, \
         'Hechizos.dat'))
 
     # Nombres prohibidos.
-    forbiddenNames = set([x.strip().lower() for x in \
+    corevars.forbiddenNames = set([x.strip().lower() for x in \
         open(os.path.join(datFilesPath, 'NombresInvalidos.txt'))])
 
 def loadServerConfig():
     global ServerConfig
 
-    ServerConfig = SafeConfigParser()
+    corevars.ServerConfig = ServerConfig = SafeConfigParser()
     ServerConfig.read([sys.argv[1]])
 
 def initServer():
@@ -594,7 +303,7 @@ def initServer():
     loadServerConfig()
 
     cmdDecoder = ClientCommandsDecoder()
-    gameServer = GameServer()
+    gameServer = corevars.gameServer = GameServer()
 
 def runServer():
     listenPort = ServerConfig.getint('Core', 'ListenPort')
@@ -641,8 +350,4 @@ def main():
     print
 
     runServer()
-
-
-if __name__ == '__main__':
-    main()
 

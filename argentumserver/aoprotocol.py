@@ -258,8 +258,22 @@ clientPacketsStr = r"""    LoginExistingChar       'OLOGIN
     Consultation"""
 
 def makePacketList(s):
+    """Genera la lista de paquetes a partir del gran string anterior"""
     return dict([(x.strip().split(None, 1)[0], a) \
         for a, x in enumerate(s.split('\n'))])
+
+def generatePacketsHandler(packets, f):
+    """Generador de codigo para los handlers del cliente"""
+    p = sorted(packets.items(), key=lambda x: x[1])
+
+    for x in p:
+        f.write("""
+    @CheckLogged
+    def handleCmd%(PacketName)s(self, prot, buf, player):
+        cmd = buf.readInt8()
+        raise CriticalDecoderException('Not Implemented')
+        # FIXME
+""" % {'PacketName': x[0]})
 
 # Dado un nombre de paquete (Logged, etc.) devuelve el PacketID.
 serverPackets = makePacketList(serverPacketsStr)
@@ -268,6 +282,9 @@ clientPackets = makePacketList(clientPacketsStr)
 # Dado un PacketID (0, 1, etc.) devuelve el nombre del paquete.
 serverPacketsFlip = dict([(b, a) for a, b in serverPackets.items()])
 clientPacketsFlip = dict([(b, a) for a, b in clientPackets.items()])
+
+lastServerPacketID = max(serverPackets.values())
+lastClientPacketID = max(clientPackets.values())
 
 __all__ = ['serverPackets', 'clientPackets']
 
