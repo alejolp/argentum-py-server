@@ -57,7 +57,8 @@ class ClientCommandsDecoder(object):
 
     def handleData(self, prot):
         buf = prot._ao_inbuff
-        
+        cmd = None
+
         """
         Los comandos consumen los bytes del buffer de entrada, si faltan
         datos se dispara un CommandsDecoderException o ByteQueueError.
@@ -106,6 +107,11 @@ class ClientCommandsDecoder(object):
         except CommandsDecoderException, e:
             pass
             # debug_print("CommandsDecoderException")
+        except CriticalDecoderException, e:
+            if cmd is not None:
+                debug_print("CriticalDecoderException", cmd, \
+                    clientPacketsFlip.get(cmd, '?'), e)
+            raise
         except Exception, e:
             debug_print("handleData Exception: ", e)
             raise
@@ -568,18 +574,6 @@ class ClientCommandsDecoder(object):
 
     @CheckLogged
     def handleCmdGuildRequestDetails(self, prot, buf, player):
-        cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
-    @CheckLogged
-    def handleCmdOnline(self, prot, buf, player):
-        cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
-    @CheckLogged
-    def handleCmdQuit(self, prot, buf, player):
         cmd = buf.readInt8()
         raise CriticalDecoderException('Not Implemented')
         # FIXME
@@ -1093,11 +1087,22 @@ class ServerCommandsEncoder(object):
         self.buf.writeString(msg)
         self.prot.flushOutBuf()
 
-    def sendCharacterCreate(self):
+    def sendCharacterCreate(self, chridx, body, head, heading, x, y, weapon, shield, helmet, fx, fxloops, name, nickColor, priv):
         self.buf.writeInt8(serverPackets['CharacterCreate'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt16(chridx)
+        self.buf.writeInt16(body)
+        self.buf.writeInt16(head)
+        self.buf.writeInt8(heading)
+        self.buf.writeInt8(x)
+        self.buf.writeInt8(y)
+        self.buf.writeInt16(weapon)
+        self.buf.writeInt16(shield)
+        self.buf.writeInt16(helmet)
+        self.buf.writeInt16(fx)
+        self.buf.writeInt16(fxloops)
+        self.buf.writeString(name)
+        self.buf.writeInt8(nickColor)
+        self.buf.writeInt8(priv)
         self.prot.flushOutBuf()
 
     def sendCharacterRemove(self, chridx):

@@ -31,9 +31,7 @@ from ConfigParser import NoOptionError
 
 from bytequeue import ByteQueue
 from util import MyConfigParser
-
-MAP_SIZE_X = 100
-MAP_SIZE_Y = 100
+from constants import MAP_SIZE_X, MAP_SIZE_Y
 
        
 class MapFileTile(object):

@@ -30,17 +30,23 @@ class Player(object):
 
         self.playerName = playerName
         self.currentMap = None
-        self.charIdx = None
+        self.chridx = None
         self.userIdx = None
+        self.map = None
 
         self.closing = False
 
         cv.gameServer.playerJoin(self)
 
     def start(self):
+        
+        self.pos = [50, 50]
+        self.map = None # Cuando no esta en ningun mapa es None.
+
+        cv.mapData[1].playerJoin(self)
+
         self.cmdout.sendUserIndexInServer(self.userIdx)
-        self.cmdout.sendUserCharIndexInServer(self.charIdx)
-        self.cmdout.sendChangeMap(32, 0)
+        self.cmdout.sendUserCharIndexInServer(self.chridx)
         self.cmdout.sendLogged(0)
         self.cmdout.sendConsoleMsg(WELCOME_MSG)
 
@@ -48,6 +54,28 @@ class Player(object):
         if not self.closing:
             self.closing = True
             cv.gameServer.playerLeave(self)
+            self.map.playerLeave(self)
 
             self.prot.loseConnection()
+
+    def sendPosUpdate(self):
+        self.cmdout.sendPosUpdate(self.pos.x, self.pos.y)
+
+    def move(self, d):
+        p2 = list(self.pos)
+        if d == DIR_N:
+            p2[1] -= 1
+        elif d == DIR_E:
+            p2[0] += 1
+        elif d == DIR_S:
+            p2[1] += 1
+        elif d == DIR_W:
+            p2[0] -= 1
+
+        if not self.map.validPos(p2):
+            self.sendPosUpdate()
+        else:
+            oldpos = self.pos
+            self.pos = p2
+            self.map.playerMove(self, oldpos)
 

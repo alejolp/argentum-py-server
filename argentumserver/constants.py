@@ -23,3 +23,8 @@ WELCOME_MSG = "Bienvenido al servidor AONX - visite www.aonx.com.ar"
 TIMEOUT_NOT_LOGGED = 15
 TIMEOUT_YES_LOGGED = 5 * 60
 
+DIR_N, DIR_E, DIR_S, DIR_W = range(4)
+
+MAP_SIZE_X = 100
+MAP_SIZE_Y = 100
+

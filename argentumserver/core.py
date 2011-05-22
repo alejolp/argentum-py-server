@@ -131,6 +131,9 @@ class AoProtocolFactory(Factory):
     protocol = AoProtocol
 
 class GameServer(object):
+    """
+    Clase que se encarga del 'bookkeeping' de las conexiones y jugadores.
+    """
     def __init__(self):
         self._players = set()
         self._playersByName = {}
@@ -160,9 +163,9 @@ class GameServer(object):
         self._players.add(p)
         self._playersByName[p.playerName.lower()] = p
 
-        charIdx = self.nextCharIdx()
-        self._playersByChar[charIdx]
-        p.charIdx = charIdx
+        chridx = self.nextCharIdx()
+        self._playersByChar[chridx] = p
+        p.chridx = chridx
         p.userIdx = 0
 
         self._playersLoginCounter += 1
@@ -171,8 +174,8 @@ class GameServer(object):
         self._players.remove(p)
         del self._playersByName[p.playerName.lower()]
 
-        self.freeCharIdx(p.charIdx)
-        p.charIdx = None
+        self.freeCharIdx(p.chridx)
+        p.chridx = None
 
     def playerRename(self, p):
         """Warning: O(n)"""
@@ -184,12 +187,14 @@ class GameServer(object):
         self._playersByName[p.playerName.lower()] = p
 
     def connectionMade(self, c):
+        ipConnLimit = ServerConfig.getint('Core', 'ConnectionsCountLimitPerIP')
+
         self._connections.add(c)
 
         ip = c.getPeer().host
         self._ipsCounter[ip] = self._ipsCounter.get(ip, 0) + 1
 
-        if self._ipsCounter[ip] > ServerConfig.getint('Core', 'ConnectionsCountLimitPerIP'):
+        if self._ipsCounter[ip] > ipConnLimit:
             c.loseConnection()
 
     def connectionLost(self, c):
@@ -197,18 +202,17 @@ class GameServer(object):
             self._connections.remove(c)
 
             ip = c.getPeer().host
-            self._ipsCounter[ips] = self._ipsCounter[ips] - 1
-            assert self._ipsCounter[ips] >= 0
+            self._ipsCounter[ip] = self._ipsCounter[ip] - 1
+            assert self._ipsCounter[ip] >= 0
 
-            if self._ipsCounter[ips] == 0:
-                del self._ipsCounter[ips]
+            if self._ipsCounter[ip] == 0:
+                del self._ipsCounter[ip]
 
     def playerByName(self, playerName):
         return self._playersByName[playerName.lower()]
 
     def playersCount(self):
         assert len(self._players) == len(self._playersByName)
-        assert len(self._players) == len(self._playersByChar)
 
         return len(self._players)
 
@@ -237,12 +241,64 @@ class GameMap(object):
         self.mapNum = mapNum
         self.mapFile = mapfile.loadMapFile(mapNum, \
             ServerConfig.get('Core', 'MapsFilesPath'))
+        self._playersMatrix = [None] * (MAP_SIZE_X * MAP_SIZE_Y)
+
+    def getPos(self, x, y):
+        assert x >= 1 and x <= MAP_SIZE_X
+        assert y >= 1 and y <= MAP_SIZE_Y
+
+        return self._playersMatrix[x - 1 + (y - 1) * MAP_SIZE_X]
+
+    def setPos(self, x, y, p):
+        assert x >= 1 and x <= MAP_SIZE_X
+        assert y >= 1 and y <= MAP_SIZE_Y
+
+        self._playersMatrix[x - 1 + (y - 1) * MAP_SIZE_X] = p
 
     def playerJoin(self, p):
-        self.player.add(p)
+        if p.map is not None:
+            p.map.playerLeave(p)
+
+        self.players.add(p)
+
+        x, y = p.pos
+        self.setPos(x, y, p)
+
+        p.map = self
+        p.cmdout.sendChangeMap(self.mapNum, self.mapFile.mapVers)
+
+        for a in self.players:
+            pass
+            #a.cmdout.sendCharacterCreate(p)
 
     def playerLeave(self, p):
         self.players.remove(p)
+
+        x, y = p.pos
+        self.setPos(x, y, None)
+
+        for a in self.players:
+            a.cmdout.sendCharacterRemove(p.chridx)
+
+    def playerMove(self, p, oldpos):
+        x, y = p.pos
+
+        self.setPos(oldPos[0], oldPos[1], None)
+        self.setPos(x, y, p)
+
+        for a in self.players:
+            a.cmdout.sendCharacterMove(p.chridx, x, y)
+
+    def validPos(self, pos):
+        x, y = p
+
+        if self.mapFile[x, y].blocked:
+            return False
+
+        if self.getPos(x, y) is not None:
+            return False
+
+        return True
 
 class GameMapList(object):
     def __init__(self, mapCount):
@@ -293,7 +349,7 @@ def loadMaps():
         for x in xrange(1, 290+1):
             sys.stdout.write(str(x) + " ")
             sys.stdout.flush()
-            mapData[x]
+            corevars.mapData[x]
 
         print
 
