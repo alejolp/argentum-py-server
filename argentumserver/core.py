@@ -349,7 +349,7 @@ def loadMaps():
     if mapLoadingMode == "full":
         print "Cargando mapas... "
 
-        for x in xrange(1, 290+1):
+        for x in xrange(1, mapCount + 1):
             sys.stdout.write(str(x) + " ")
             sys.stdout.flush()
             corevars.mapData[x]
