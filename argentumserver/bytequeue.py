@@ -130,8 +130,14 @@ class ByteQueue(object):
     def readFloat(self):
         return self.read('<f')[0]
 
+    def readSingle(self):
+        return self.readFloat()
+
     def readDouble(self):
         return self.read('<d')[0]
+
+    def readBoolean(self):
+        return bool(self.readInt8())
 
     def readString(self):
         cant = self.readInt16()
@@ -152,8 +158,14 @@ class ByteQueue(object):
     def peekFloat(self):
         return self.peekFmt('<f')[0]
 
+    def peekSingle(self):
+        return self.peekFloat()
+
     def peekDouble(self):
         return self.peekFmt('<d')[0]
+
+    def peekBoolean(self):
+        return bool(self.peekInt8())
 
     def peekString(self):
         cant = self.peekInt16()
@@ -173,8 +185,14 @@ class ByteQueue(object):
     def writeFloat(self, n):
         self.writeFmt('<f', n)
 
+    def writeSingle(self, n):
+        self.writeFloat(n)
+
     def writeDouble(self, n):
         self.writeFmt('<d', n)
+
+    def writeBoolean(self, n):
+        self.writeInt8(1 if bool(n) else 0)
 
     def writeString(self, s):
         if type(s) is unicode:

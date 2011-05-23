@@ -21,6 +21,31 @@
 from constants import *
 import corevars as cv
 
+class PlayerAttributes(object):
+    def __init__(self):
+        self.chrclass = None
+        self.head = 0
+        self.body = 0
+        self.attributes = [None] * 5
+        self.skills = [None] * NUMSKILLS
+        self.hechizos = [None] * 10
+        self.inventario = [None] * NUMINVSLOTS
+        self.hambre = 0
+        self.sed = 0
+        self.hambreMax = 0
+        self.sedMax = 0
+        self.hp = 0
+        self.hpMax = 0
+        self.mana = 0
+        self.manaMax = 0
+        self.sta = 0
+        self.staMax = 0
+        self.gld = 0
+        self.gldBank = 0
+        self.elv = 0
+        self.elu = 0
+        self.exp = 0
+
 class Player(object):
     """Un jugador"""
 
@@ -35,7 +60,11 @@ class Player(object):
         self.map = None
 
         self.privileges = PLAYERTYPE_USER
-        self.chrclass = CLASES['Mage']
+
+        self.attrs = PlayerAttributes()
+        self.attrs.chrclass = CLASES['Mage']
+        self.attrs.head = 1
+        self.attrs.body = 1
 
         self.closing = False
 
@@ -49,9 +78,15 @@ class Player(object):
 
         cv.mapData[1].playerJoin(self)
 
+        self.sendUpdateHungerAndThirst()
+        self.sendUpdateUserStats()
+        self.sendInventory()
+        self.sendSpells()
+
         self.cmdout.sendUserIndexInServer(self.userIdx)
         self.cmdout.sendUserCharIndexInServer(self.chridx)
-        self.cmdout.sendLogged(self.chrclass)
+        self.cmdout.sendLogged(self.attrs.chrclass)
+
         self.cmdout.sendConsoleMsg(WELCOME_MSG, FONTTYPES['SERVER'])
         self.cmdout.sendConsoleMsg(cv.ServerConfig.get('Core', 'WelcomeMessage').encode(TEXT_ENCODING), FONTTYPES['SERVER'])
 
@@ -65,6 +100,42 @@ class Player(object):
 
     def sendPosUpdate(self):
         self.cmdout.sendPosUpdate(self.pos.x, self.pos.y)
+
+    def sendUpdateHungerAndThirst(self):
+        self.cmdout.sendUpdateHungerAndThirst(self.attrs.sedMax, \
+            self.attrs.sed, self.attrs.hambreMax, self.attrs.hambre)
+
+    def sendUpdateSta(self):
+        self.cmdout.sendUpdateSta(self.attrs.sta)
+
+    def sendUpdateMana(self):
+        self.cmdout.sendUpdateMana(self.attrs.mana)
+
+    def sendUpdateUserStats(self):
+        self.cmdout.sendUpdateUserStats(self.attrs.hpMax, self.attrs.hp, \
+            self.attrs.manaMax, self.attrs.mana, self.attrs.staMax, \
+            self.attrs.sta, self.attrs.gld, self.attrs.elv, self.attrs.elu, \
+            self.attrs.exp)
+
+    def sendInventory(self, slot=None):
+        """slot, objIdx, name, amount, equipped, grhIdx, objType, hitMax, hit, defMax, defMin, price"""
+        
+        if slot is None:
+            for x in xrange(1, len(self.attrs.inventario) + 1):
+                self.sendInventory(x)
+        else:
+            # Ojo: slot empieza en 1.
+            # FIXME: Enviar objetos reales.
+            self.cmdout.sendChangeInventorySlot(slot, 0, "", 0, 0, 0, 0, 0, 0, 0, 0, 0.0)
+
+    def sendSpells(self, slot=None):
+        if slot is None:
+            for x in xrange(1, len(self.attrs.hechizos) + 1):
+                self.sendSpells(x)
+        else:
+            # Ojo: slot empieza en 1.
+            # FIXME: Enviar spells reales.
+            self.cmdout.sendChangeSpellSlot(slot, 0, 'None')
 
     def move(self, d):
         p2 = list(self.pos)
@@ -92,8 +163,8 @@ class Player(object):
         """chridx, body, head, heading, x, y, weapon, shield, helmet, fx, fxloops, name, nickColor, priv"""
 
         d = {'chridx': self.chridx,
-            'body': 1,
-            'head': 0,
+            'body': self.attrs.head,
+            'head': self.attrs.body,
             'heading': self.heading,
             'x': self.pos[0],
             'y': self.pos[1],
@@ -104,6 +175,6 @@ class Player(object):
             'fxloops': 0,
             'name': self.playerName,
             'nickColor': NICKCOLOR_CIUDADANO,
-            'priv': self.privileges, }
+            'priv': self.privileges}
         return d
 

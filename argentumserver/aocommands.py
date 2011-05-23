@@ -1112,7 +1112,7 @@ class ServerCommandsEncoder(object):
 
     def sendCharacterRemove(self, chridx):
         self.buf.writeInt8(serverPackets['CharacterRemove'])
-        self.bug.writeInt16(chridx)
+        self.buf.writeInt16(chridx)
         self.prot.flushOutBuf()
 
     def sendCharacterChangeNick(self):
@@ -1211,11 +1211,14 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendUpdateUserStats(self):
+    def sendUpdateUserStats(self, hpMax, hp, manMax, man, staMax, sta, gld, elv, elu, exp):
         self.buf.writeInt8(serverPackets['UpdateUserStats'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        for x in [hpMax, hp, manMax, man, staMax, sta]:
+            self.buf.writeInt16(x)
+        self.buf.writeInt32(gld)
+        self.buf.writeInt8(elv)
+        self.buf.writeInt32(elu)
+        self.buf.writeInt32(exp)
         self.prot.flushOutBuf()
 
     def sendWorkRequestTarget(self):
@@ -1225,11 +1228,17 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendChangeInventorySlot(self):
+    def sendChangeInventorySlot(self, slot, objIdx, name, amount, equipped, grhIdx, objType, hitMax, hit, defMax, defMin, price):
         self.buf.writeInt8(serverPackets['ChangeInventorySlot'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt16(objIdx)
+        self.buf.writeString(name)
+        self.buf.writeInt16(amount)
+        self.buf.writeBoolean(equipped)
+        self.buf.writeInt16(grhIdx)
+        self.buf.writeInt16(objType)
+        for x in [hitMax, hit, defMax, defMin]:
+            self.buf.writeInt16(x)
+        self.buf.writeSingle(price)
         self.prot.flushOutBuf()
 
     def sendChangeBankSlot(self):
@@ -1239,11 +1248,11 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendChangeSpellSlot(self):
+    def sendChangeSpellSlot(self, slot, spellIdx, name):
         self.buf.writeInt8(serverPackets['ChangeSpellSlot'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt8(slot)
+        self.buf.writeInt16(spellIdx)
+        self.buf.writeString(name)
         self.prot.flushOutBuf()
 
     def sendAtributes(self):
@@ -1314,11 +1323,10 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendUpdateHungerAndThirst(self):
+    def sendUpdateHungerAndThirst(self, aguMax, agu, hamMax, ham):
         self.buf.writeInt8(serverPackets['UpdateHungerAndThirst'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        for x in [aguMax, agu, hamMax, ham]:
+            self.buf.writeInt8(x)
         self.prot.flushOutBuf()
 
     def sendFame(self):
@@ -1391,11 +1399,17 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendSendSkills(self):
+    def sendSendSkills(self, userSkills, expSkills):
         self.buf.writeInt8(serverPackets['SendSkills'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
 
+        if len(userSkills) != constants.NUMSKILLS:
+            raise TypeError()
+        if len(expSkills) != constants.NUMSKILLS:
+            raise TypeError()
+
+        for a, b in zip(userSkills, expSkills):
+            self.buf.writeInt8(a)
+            self.buf.writeInt8(b)
         self.prot.flushOutBuf()
 
     def sendTrainerCreatureList(self):
