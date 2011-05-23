@@ -138,26 +138,25 @@ class Player(object):
             self.cmdout.sendChangeSpellSlot(slot, 0, 'None')
 
     def move(self, d):
-        p2 = list(self.pos)
+        newpos = list(self.pos)
         if d == DIR_N:
-            p2[1] -= 1
+            newpos[1] -= 1
         elif d == DIR_E:
-            p2[0] += 1
+            newpos[0] += 1
         elif d == DIR_S:
-            p2[1] += 1
+            newpos[1] += 1
         elif d == DIR_W:
-            p2[0] -= 1
+            newpos[0] -= 1
         else:
             return
 
-        self.heading = d
-
-        if not self.map.validPos(p2):
-            self.sendPosUpdate()
-        else:
+        try: # EAFP
+            self.heading = d
             oldpos = self.pos
-            self.pos = p2
-            self.map.playerMove(self, oldpos)
+            self.map.playerMove(self, p, oldpos, newpos)
+            self.pos = newpos
+        except GameLogicError, e: # Invalid pos
+            self.sendPosUpdate()
 
     def getCharacterCreateAttrs(self):
         """chridx, body, head, heading, x, y, weapon, shield, helmet, fx, fxloops, name, nickColor, priv"""

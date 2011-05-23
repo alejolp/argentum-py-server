@@ -283,17 +283,22 @@ class GameMap(object):
         for a in self.players:
             a.cmdout.sendCharacterRemove(p.chridx)
 
-    def playerMove(self, p, oldpos):
-        x, y = p.pos
+    def playerMove(self, p, oldpos, newpos):
+        """p: player"""
 
-        self.setPos(oldPos[0], oldPos[1], None)
+        if not validPos(newpos):
+            raise GameLogicError('Invalid pos')
+
+        x, y = newpos
+
+        self.setPos(oldpos[0], oldpos[1], None)
         self.setPos(x, y, p)
 
         for a in self.players:
             a.cmdout.sendCharacterMove(p.chridx, x, y)
 
     def validPos(self, pos):
-        x, y = p
+        x, y = pos
 
         if self.mapFile[x, y].blocked:
             return False

@@ -160,12 +160,12 @@ class ClientCommandsDecoder(object):
 
     @CheckNotLogged
     def handleCmdThrowDices(self, prot, buf, player):
-        prot.cmdout.sendShowMessageBox(constants.CREACION_PJS)
+        prot.cmdout.sendErrorMsg(constants.CREACION_PJS)
         raise CriticalDecoderException("Not Implemented")
 
     @CheckNotLogged
     def handleCmdLoginNewChar(self, prot, buf, player):
-        prot.cmdout.sendShowMessageBox(constants.CREACION_PJS)
+        prot.cmdout.sendErrorMsg(constants.CREACION_PJS)
         raise CriticalDecoderException("Not Implemented")
 
     @CheckLogged
@@ -1080,11 +1080,9 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendGuildChat(self):
+    def sendGuildChat(self, msg):
         self.buf.writeInt8(serverPackets['GuildChat'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeString(msg)
         self.prot.flushOutBuf()
 
     def sendShowMessageBox(self, msg):
@@ -1115,11 +1113,10 @@ class ServerCommandsEncoder(object):
         self.buf.writeInt16(chridx)
         self.prot.flushOutBuf()
 
-    def sendCharacterChangeNick(self):
+    def sendCharacterChangeNick(self, chridx, nick):
         self.buf.writeInt8(serverPackets['CharacterChangeNick'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt16(chridx)
+        self.buf.writeString(nick)
         self.prot.flushOutBuf()
 
     def sendCharacterMove(self, chridx, x, y):
@@ -1134,32 +1131,36 @@ class ServerCommandsEncoder(object):
         self.buf.writeInt8(heading)
         self.prot.flushOutBuf()
 
-    def sendCharacterChange(self):
+    def sendCharacterChange(self, chridx, body, head, heading, weapon, shield, helmet, fx, fxloops):
         self.buf.writeInt8(serverPackets['CharacterChange'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt16(chridx)
+        self.buf.writeInt16(body)
+        self.buf.writeInt16(head)
+        self.buf.writeInt8(heading)
+        self.buf.writeInt16(weapon)
+        self.buf.writeInt16(shield)
+        self.buf.writeInt16(helmet)
+        self.buf.writeInt16(fx)
+        self.buf.writeInt16(fxloops)
         self.prot.flushOutBuf()
 
-    def sendObjectCreate(self):
+    def sendObjectCreate(self, x, y, grhIdx):
         self.buf.writeInt8(serverPackets['ObjectCreate'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt8(x)
+        self.buf.writeInt8(y)
+        self.buf.writeInt16(grhIdx)
         self.prot.flushOutBuf()
 
-    def sendObjectDelete(self):
+    def sendObjectDelete(self, x, y):
         self.buf.writeInt8(serverPackets['ObjectDelete'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        self.buf.writeInt8(x)
+        self.buf.writeInt8(y)
         self.prot.flushOutBuf()
 
-    def sendBlockPosition(self):
+    def sendBlockPosition(self, x, y, b):
         self.buf.writeInt8(serverPackets['BlockPosition'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        for q in [x, y, b]:
+            self.writeInt8(q)
         self.prot.flushOutBuf()
 
     def sendPlayMidi(self):
@@ -1204,11 +1205,10 @@ class ServerCommandsEncoder(object):
 
         self.prot.flushOutBuf()
 
-    def sendCreateFX(self):
+    def sendCreateFX(self, fx, fxloops, chridx):
         self.buf.writeInt8(serverPackets['CreateFX'])
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
-
+        for x in [fx, fxloops, chridx]:
+            self.buf.writeInt16(x)
         self.prot.flushOutBuf()
 
     def sendUpdateUserStats(self, hpMax, hp, manMax, man, staMax, sta, gld, elv, elu, exp):
