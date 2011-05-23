@@ -117,7 +117,6 @@ class AoProtocol(Protocol):
 
     def loseConnection(self):
         if not self._ao_closing:
-            debug_print("loseConnection")
             self._ao_closing = True
             self.cmdout = None
             gameServer.connectionLost(self)
@@ -144,6 +143,7 @@ class GameServer(object):
 
         self._nextCharIdx = collections.deque()
         self._playersLoginCounter = 0
+        self._playersMaxLoginsCount = 0
 
     def playersLimitReached(self):
         playersLimit = ServerConfig.getint('Core', 'PlayersCountLimit')
@@ -169,6 +169,9 @@ class GameServer(object):
         p.userIdx = 0
 
         self._playersLoginCounter += 1
+
+        if len(self._players) > self._playersMaxLoginsCount:
+            self._playersMaxLoginsCount = len(self._players)
 
     def playerLeave(self, p):
         self._players.remove(p)
