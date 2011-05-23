@@ -6,8 +6,7 @@ Pequeño servidor de Argentum Online.
 Condiciones de uso
 ------------------
 
-Este software se encuentra publicado bajo la licencia GNU GPL v3. El uso del 
-software implica aceptar las condiciones mencionadas en la licencia.
+Este software se encuentra publicado bajo la licencia GNU GPL v3.
 
 Para obtener más detalles sobre las condiciones de uso puede leer la licencia
 de uso completa, ubicada dentro del archivo licence.txt. 
