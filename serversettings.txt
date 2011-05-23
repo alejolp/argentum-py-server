@@ -1,9 +1,17 @@
-# Archivo de configuracion de AONX Server.
-# Las rutas son relativas al pwd desde donde se inicia.
-# El formato de este archivo es el que acepta el modulo ConfigParser de Python.
 #
+# Archivo de configuración de AONX Server.
+#
+# Las rutas son relativas al pwd desde donde se inicia el servidor.
+#
+# El formato de este archivo es el que acepta el módulo ConfigParser de Python.
+#
+# Atencion: La codificación de caracteres del archivo es UTF-8. Usar un editor
+#           de texto que la soporte.
 
 [Core]
+; Mensaje de bienvenida a los jugadores.
+WelcomeMessage: Bienvenido!
+
 ; Puerto de escucha TCP.
 ListenPort: 7666
 
@@ -30,4 +38,7 @@ MapLoadingMode: Lazy
 
 ; Ruta de acceso a los dats.
 DatFilesPath: %(BaseResourcesPath)s/Dat
+
+; No modificar. Sanity check para validar la codificación.
+EncodingSanityCheck: áéíóú.
 

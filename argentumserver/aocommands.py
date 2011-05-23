@@ -30,6 +30,7 @@ from gamerules import *
 from player import Player
 import aoprotocol
 import corevars as cv
+import constants
 
 class CommandsDecoderException(Exception):
     """Faltan datos para decodificar un comando del cliente"""
@@ -159,10 +160,12 @@ class ClientCommandsDecoder(object):
 
     @CheckNotLogged
     def handleCmdThrowDices(self, prot, buf, player):
+        prot.cmdout.sendShowMessageBox(constants.CREACION_PJS)
         raise CriticalDecoderException("Not Implemented")
 
     @CheckNotLogged
     def handleCmdLoginNewChar(self, prot, buf, player):
+        prot.cmdout.sendShowMessageBox(constants.CREACION_PJS)
         raise CriticalDecoderException("Not Implemented")
 
     @CheckLogged
@@ -172,7 +175,8 @@ class ClientCommandsDecoder(object):
         msg = buf.readString()
         # FIXME
         for p in cv.gameServer.playersList():
-            p.cmdout.sendConsoleMsg(player.playerName + " dice: " + msg)
+            p.cmdout.sendConsoleMsg(player.playerName + " dice: " + msg, \
+                constants.FONTTYPES['TALK'])
 
     @CheckLogged
     def handleCmdWalk(self, prot, buf, player):
@@ -184,7 +188,8 @@ class ClientCommandsDecoder(object):
     def handleCmdOnline(self, prot, buf, player):
         cmd = buf.readInt8()
         player.cmdout.sendConsoleMsg(\
-            "Online: %d" % cv.gameServer.playersCount())
+            "Online: %d" % cv.gameServer.playersCount(), \
+            constants.FONTTYPES['SERVER'])
 
     @CheckLogged
     def handleCmdQuit(self, prot, buf, player):
@@ -933,7 +938,7 @@ class ServerCommandsEncoder(object):
         self.buf = prot.outbuf
         self.prot = prot # K-Pax.
 
-    def sendConsoleMsg(self, msg, font=0):
+    def sendConsoleMsg(self, msg, font):
         self.buf.writeInt8(serverPackets['ConsoleMsg'])
         self.buf.writeString(msg)
         self.buf.writeInt8(font)

@@ -20,6 +20,8 @@
 
 import struct
 
+import constants
+
 class ByteQueueError(Exception):
     pass
 
@@ -176,12 +178,12 @@ class ByteQueue(object):
 
     def writeString(self, s):
         if type(s) is unicode:
-            s = s.encode('utf-8')
+            s = s.encode(constants.TEXT_ENCODING)
         self.writeInt16(len(s))
         self.data += s
 
     def writeStringFixed(self, s):
         if type(s) is unicode:
-            s = s.encode('utf-8')
+            s = s.encode(constants.TEXT_ENCODING)
         self.data += s
 

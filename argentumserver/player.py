@@ -34,6 +34,9 @@ class Player(object):
         self.userIdx = None
         self.map = None
 
+        self.privileges = PLAYERTYPE_USER
+        self.chrclass = CLASES['Mage']
+
         self.closing = False
 
         cv.gameServer.playerJoin(self)
@@ -41,14 +44,16 @@ class Player(object):
     def start(self):
         
         self.pos = [50, 50]
+        self.heading = DIR_S
         self.map = None # Cuando no esta en ningun mapa es None.
 
         cv.mapData[1].playerJoin(self)
 
         self.cmdout.sendUserIndexInServer(self.userIdx)
         self.cmdout.sendUserCharIndexInServer(self.chridx)
-        self.cmdout.sendLogged(0)
-        self.cmdout.sendConsoleMsg(WELCOME_MSG)
+        self.cmdout.sendLogged(self.chrclass)
+        self.cmdout.sendConsoleMsg(WELCOME_MSG, FONTTYPES['SERVER'])
+        self.cmdout.sendConsoleMsg(cv.ServerConfig.get('Core', 'WelcomeMessage').encode(TEXT_ENCODING), FONTTYPES['SERVER'])
 
     def quit(self):
         if not self.closing:
@@ -71,6 +76,10 @@ class Player(object):
             p2[1] += 1
         elif d == DIR_W:
             p2[0] -= 1
+        else:
+            return
+
+        self.heading = d
 
         if not self.map.validPos(p2):
             self.sendPosUpdate()
@@ -78,4 +87,23 @@ class Player(object):
             oldpos = self.pos
             self.pos = p2
             self.map.playerMove(self, oldpos)
+
+    def getCharacterCreateAttrs(self):
+        """chridx, body, head, heading, x, y, weapon, shield, helmet, fx, fxloops, name, nickColor, priv"""
+
+        d = {'chridx': self.chridx,
+            'body': 1,
+            'head': 0,
+            'heading': self.heading,
+            'x': self.pos[0],
+            'y': self.pos[1],
+            'weapon': 0,
+            'shield': 0,
+            'helmet': 0,
+            'fx': 0, 
+            'fxloops': 0,
+            'name': self.playerName,
+            'nickColor': NICKCOLOR_CIUDADANO,
+            'priv': self.privileges, }
+        return d
 

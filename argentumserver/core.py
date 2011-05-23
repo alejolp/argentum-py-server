@@ -268,8 +268,8 @@ class GameMap(object):
         p.cmdout.sendChangeMap(self.mapNum, self.mapFile.mapVers)
 
         for a in self.players:
-            pass
-            #a.cmdout.sendCharacterCreate(p)
+            d = p.getCharacterCreateAttrs()
+            a.cmdout.sendCharacterCreate(**d)
 
     def playerLeave(self, p):
         self.players.remove(p)
@@ -376,9 +376,13 @@ def loadFiles():
 
 def loadServerConfig():
     global ServerConfig
+    import codecs
 
     corevars.ServerConfig = ServerConfig = SafeConfigParser()
-    ServerConfig.read([sys.argv[1]])
+    ServerConfig.readfp(codecs.open(sys.argv[1], 'r', 'utf-8'))
+
+    if ServerConfig.get('Core', 'EncodingSanityCheck') != u'áéíóú.':
+        raise Exception('Error al validar la opcion EncodingSanityCheck del archivo de configuracion: ' + sys.argv[1])
 
 def initServer():
     global cmdDecoder, gameServer
