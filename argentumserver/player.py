@@ -226,3 +226,9 @@ class Player(object):
             p.cmdout.sendConsoleMsg(self.playerName + " %s (%d, %d): " % (act, self.pos[0], self.pos[1]) + msg, \
                 FONTTYPES['TALK'])
 
+    def doPickUp(self):
+        self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
+    
+    def doAttack(self):
+        self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
+

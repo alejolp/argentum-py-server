@@ -212,17 +212,17 @@ class ClientCommandsDecoder(object):
     @CheckLogged
     def handleCmdRequestPositionUpdate(self, prot, buf, player):
         cmd = buf.readInt8()
-        # FIXME
+        player.sendPosUpdate()
 
     @CheckLogged
     def handleCmdAttack(self, prot, buf, player):
         cmd = buf.readInt8()
-        # FIXME
+        player.doAttack()
 
     @CheckLogged
     def handleCmdPickUp(self, prot, buf, player):
         cmd = buf.readInt8()
-        # FIXME
+        player.doPickUp()
 
     @CheckLogged
     def handleCmdSafeToggle(self, prot, buf, player):

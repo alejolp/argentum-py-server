@@ -55,3 +55,7 @@ CLASES = dict(zip(['Mage', 'Cleric', 'Warrior', 'Assasin', 'Thief',\
 RAZAS = dict(zip(['Humano', 'Elfo', 'Drow', 'Gnomo', 'Enano'], \
     range(1, 5 + 1)))
 
+OBJTYPE = dict([('UseOnce ', 1), ('Weapon ', 2), ('Armadura ', 3), ('Arboles ', 4), ('Guita ', 5), ('Puertas ', 6), ('Contenedores ', 7), ('Carteles ', 8), ('Llaves ', 9), ('Foros ', 10), ('Pociones ', 11), ('Bebidas ', 13), ('Lenia ', 14), ('Fogata ', 15), ('ESCUDO ', 16), ('CASCO ', 17), ('Anillo ', 18), ('Teleport ', 19), ('Yacimiento ', 22), ('Minerales ', 23), ('Pergaminos ', 24), ('Instrumentos ', 26), ('Yunque ', 27), ('Fragua ', 28), ('Barcos ', 31), ('Flechas ', 32), ('BotellaVacia ', 33), ('BotellaLlena ', 34), ('Manchas ', 35), ('ArbolElfico ', 36), ('Mochilas ', 37), ('Cualquiera ', 1000)])
+
+OBJTYPENAMES = dict([(b, a) for a, b in OBJTYPE.items()])
+

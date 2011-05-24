@@ -19,7 +19,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import os, sys, datetime, time, gc, re, collections
+import os, sys, datetime, time, gc, re, collections, random
 from ConfigParser import SafeConfigParser
 
 from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
@@ -391,13 +391,24 @@ class GameMapList(object):
         return self.maps[n]
 
     def _removeUnusedMaps(self):
-        for i, m in enumerate(self.maps):
-            if m is not None and m.isMapUnused():
+        # Revisar esto. Tiene sentido?
+
+        randMaps = [(i, m) for i, m in enumerate(self.maps) if m is not None]
+        random.shuffle(randMaps)
+
+        for i, m in randMaps:
+            if m.isMapUnused():
                 m.unload()
                 self.maps[i] = None
                 self.activeMaps -= 1
+                if self.activeMaps < self.maxActiveMaps:
+                    break
 
 # Timer
+
+def onTimerSched():
+    """Este timer se ejecuta cinco veces por segundo, cuidado con hacer demasiadas cosas."""
+    pass
 
 def onTimer1():
     """Este timer se ejecuta cada un segundo."""
@@ -488,6 +499,7 @@ def runServer():
     listenPort = ServerConfig.getint('Core', 'ListenPort')
     reactor.listenTCP(listenPort, AoProtocolFactory())
 
+    task.LoopingCall(onTimerSched).start(0.2)
     task.LoopingCall(onTimer1).start(1)
     task.LoopingCall(onTimer10).start(10)
     task.LoopingCall(onTimer60).start(60)
