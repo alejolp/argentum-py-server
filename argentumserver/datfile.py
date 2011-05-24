@@ -33,21 +33,24 @@ ConfigParser los pueda entender.
 
 import ConfigParser
 
-from util import MyConfigParser
+from util import MyConfigParser, positiverolist
 
 class ObjItem(object):
     __slots__ = ('Name', 'GrhIndex', 'ObjType', 'Agarrable', 'Valor', \
         'Crucial')
+    __tipos__ = (str, int, int, bool, int, bool,)
     def __init__(self):
         pass
 
 class NPCDat(object):
     __slots__ = ('Name', 'NpcType', 'Desc', 'Head', 'Body', 'Heading', )
+    __tipos__ = (str, int, str, int, int, int)
     def __init__(self):
         pass
 
 class HechizoDat(object):
     __slots__ = ('Nombre', 'Desc', 'PalabrasMagicas')
+    __tipos__ = (str, str, str)
     def __init__(self):
         pass
 
@@ -56,14 +59,16 @@ def loadObjDat(fileName):
     parser.read([fileName])
     
     maxObj = parser.getint('INIT', 'NumOBJs')
-    return loadDatFile(parser, maxObj, ObjItem, ObjItem.__slots__, 'OBJ%d')
+    return loadDatFile(parser, maxObj, ObjItem, ObjItem.__slots__, \
+        ObjItem.__tipos__, 'OBJ%d')
 
 def loadNPCsDat(fileName):
     parser = MyConfigParser()
     parser.read([fileName])
     
     maxNPCs = parser.getint('INIT', 'NumNPCs')
-    return loadDatFile(parser, maxNPCs, NPCDat, NPCDat.__slots__, 'NPC%d')
+    return loadDatFile(parser, maxNPCs, NPCDat, NPCDat.__slots__, \
+        NPCDat.__tipos__, 'NPC%d')
    
 def loadHechizosDat(fileName):
     parser = MyConfigParser()
@@ -71,9 +76,9 @@ def loadHechizosDat(fileName):
     
     maxHech = parser.getint('INIT', 'NumeroHechizos')
     return loadDatFile(parser, maxHech, HechizoDat, HechizoDat.__slots__, \
-        'HECHIZO%d')
+        HechizoDat.__tipos__, 'HECHIZO%d')
 
-def loadDatFile(parser, maxIdx, datItemClass, attrsList, headerStr):
+def loadDatFile(parser, maxIdx, datItemClass, attrsList, tiposList, headerStr):
     """
     Lee un .DAT en formato estándar.
     """
@@ -86,13 +91,15 @@ def loadDatFile(parser, maxIdx, datItemClass, attrsList, headerStr):
 
         datItemList[objIdx] = o = datItemClass()
 
-        for attr in attrsList:
+        # FIXME: Esto del casting de tipos esta medio medio... revisarlo.
+
+        for attr, t in zip(attrsList, tiposList):
             try:
-                v = parser.get(headerStr % objIdx, attr)
+                v = t(parser.get(headerStr % objIdx, attr))
             except ConfigParser.NoOptionError, e:
                 v = None
 
             setattr(o, attr, v)
 
-    return datItemList
+    return positiverolist(datItemList)
 

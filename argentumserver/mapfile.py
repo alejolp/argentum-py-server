@@ -30,8 +30,8 @@ import os
 from ConfigParser import NoOptionError
 
 from bytequeue import ByteQueue
-from util import MyConfigParser
 from constants import MAP_SIZE_X, MAP_SIZE_Y
+import util, corevars
 
        
 class MapFileTile(object):
@@ -51,6 +51,11 @@ class MapFileTile(object):
     
     def __unicode__(self):
         return unicode(str(self))
+
+    def objdata(self):
+        if self.obj is not None:
+            return corevars.objData[self.obj[0]]
+        return None
 
 class MapFile(object):
     __slots__ = ('mapNum', 'tiles', 'opts', 'mapDesc', 'mapVers', 'mapCrc', 'mapMagicWord')
@@ -87,7 +92,7 @@ def loadMapFile(mapNum, fileNameBasePath):
         infData = ByteQueue(f.read())
 
     # .dat
-    datData = MyConfigParser()
+    datData = util.MyConfigParser()
     datData.read([fileNameDat])
 
     # Map object.
@@ -168,6 +173,7 @@ def loadMapFile(mapNum, fileNameBasePath):
 
             # Obj.
             if tileFlags & 4:
+                # Index, Amount.
                 tile.obj = (infData.readInt16(), infData.readInt16())
 
             mf.tiles.append(tile)

@@ -28,7 +28,7 @@ from aocommands import *
 from util import debug_print
 from constants import *
 
-import mapfile, datfile, aoprotocol, corevars
+import mapfile, datfile, aoprotocol, corevars, gamerules, util
 
 try:
     import twisted
@@ -67,6 +67,7 @@ class AoProtocol(Protocol):
 
         # En medio de una desconexion.
         self._ao_closing = False
+        self._ao_connLost = False
         self.lastHandledPacket = int(time.time())
 
         # la instancia de Player se crea cuando el login es exitoso.
@@ -74,6 +75,12 @@ class AoProtocol(Protocol):
 
         # Wrapper para serializar comandos en outbuf.
         self.cmdout = ServerCommandsEncoder(self)
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return id(self) == id(other)
 
     def dataReceived(self, data):
         if not self._ao_closing:
@@ -90,6 +97,7 @@ class AoProtocol(Protocol):
 
     def connectionLost(self, reason):
         debug_print("connectionLost")
+        self._ao_connLost = True
 
         # Todo el codigo de limpieza de la conexion debe ir en loseConnection.
 
@@ -110,7 +118,8 @@ class AoProtocol(Protocol):
             self.loseConnection()
 
     def sendData(self, data):
-        self.transport.write(data)
+        if not self._ao_connLost:
+            self.transport.write(data)
 
     def flushOutBuf(self):
         self.sendData(self.outbuf.readRaw())
@@ -121,10 +130,12 @@ class AoProtocol(Protocol):
             self.cmdout = None
             gameServer.connectionLost(self)
 
-            self.transport.loseConnection()
+            if not self._ao_connLost:
+                self.transport.loseConnection()
+
             if self.player is not None:
-                self.player.cmdout = None
                 self.player.quit()
+                self.player = None
 
 class AoProtocolFactory(Factory):
     protocol = AoProtocol
@@ -166,12 +177,14 @@ class GameServer(object):
         chridx = self.nextCharIdx()
         self._playersByChar[chridx] = p
         p.chridx = chridx
-        p.userIdx = 0
+        p.userIdx = 1
 
         self._playersLoginCounter += 1
 
         if len(self._players) > self._playersMaxLoginsCount:
             self._playersMaxLoginsCount = len(self._players)
+
+        debug_print("Nuevo jugador, chr:", chridx)
 
     def playerLeave(self, p):
         self._players.remove(p)
@@ -214,6 +227,9 @@ class GameServer(object):
     def playerByName(self, playerName):
         return self._playersByName[playerName.lower()]
 
+    def isPlayerLogged(self, playerName):
+        return playerName.lower() in self._playersByName
+
     def playersCount(self):
         assert len(self._players) == len(self._playersByName)
 
@@ -246,21 +262,29 @@ class GameMap(object):
             ServerConfig.get('Core', 'MapsFilesPath'))
         self._playersMatrix = [None] * (MAP_SIZE_X * MAP_SIZE_Y)
 
+    def isMapUnused(self):
+        return len(self.players) == 0
+
+    def unload(self):
+        pass
+
     def getPos(self, x, y):
         assert x >= 1 and x <= MAP_SIZE_X
         assert y >= 1 and y <= MAP_SIZE_Y
 
-        return self._playersMatrix[x - 1 + (y - 1) * MAP_SIZE_X]
+        return self._playersMatrix[(x - 1) + (y - 1) * MAP_SIZE_X]
 
     def setPos(self, x, y, p):
         assert x >= 1 and x <= MAP_SIZE_X
         assert y >= 1 and y <= MAP_SIZE_Y
 
-        self._playersMatrix[x - 1 + (y - 1) * MAP_SIZE_X] = p
+        self._playersMatrix[(x - 1) + (y - 1) * MAP_SIZE_X] = p
 
     def playerJoin(self, p):
+        debug_print("playerJoin", self.mapNum, p.pos)
+
         if p.map is not None:
-            p.map.playerLeave(p)
+            raise gamerules.GameLogicError('entrando a un mapa sin salir del act')
 
         self.players.add(p)
 
@@ -270,12 +294,29 @@ class GameMap(object):
         p.map = self
         p.cmdout.sendChangeMap(self.mapNum, self.mapFile.mapVers)
 
+        d = p.getCharacterCreateAttrs()
+
         for a in self.players:
-            d = p.getCharacterCreateAttrs()
+            # Avisarle al resto del nuevo pj
             a.cmdout.sendCharacterCreate(**d)
 
+            # Avisarle al nuevo pj del resto
+            if a != p:
+                p.cmdout.sendCharacterCreate(**a.getCharacterCreateAttrs())
+
+        p.sendUserCharIndexInServer()
+        mf = self.mapFile
+
+        for y in xrange(1, MAP_SIZE_Y + 1):
+            for x in xrange(1, MAP_SIZE_X + 1):
+                obj = mf[x, y].objdata()
+                if obj is not None:
+                    p.cmdout.sendObjectCreate(x, y, obj.GrhIndex)
+
     def playerLeave(self, p):
-        self.players.remove(p)
+        debug_print("playerLeave", self.mapNum, p)
+
+        p.map = None
 
         x, y = p.pos
         self.setPos(x, y, None)
@@ -283,19 +324,44 @@ class GameMap(object):
         for a in self.players:
             a.cmdout.sendCharacterRemove(p.chridx)
 
-    def playerMove(self, p, oldpos, newpos):
-        """p: player"""
+        self.players.remove(p)
 
-        if not validPos(newpos):
-            raise GameLogicError('Invalid pos')
+    def playerMove(self, p, oldpos, newpos):
+        """
+        p: player.
+        
+        Mueve un jugador dentro del mapa, validando que newpos sea valida y
+        si lo es, actualiza la pos del jugador y notifica al resto de los 
+        pjs del mapa. En caso de pisar un tile exit cambia de mapa al jugador
+        """
+
+        if not self.validPos(newpos):
+            raise gamerules.GameLogicError('Invalid pos')
 
         x, y = newpos
 
         self.setPos(oldpos[0], oldpos[1], None)
         self.setPos(x, y, p)
+        p.pos = newpos
 
         for a in self.players:
-            a.cmdout.sendCharacterMove(p.chridx, x, y)
+            if a != p:
+                a.cmdout.sendCharacterMove(p.chridx, x, y)
+
+        # Tile Exit
+        exit = self.mapFile[x, y].exit
+        if exit is not None:
+            m2, x2, y2 = exit
+            debug_print("exit:", exit)
+            p.map.playerLeave(p)
+            p.pos = [x2, y2]
+            corevars.mapData[m2].playerJoin(p)
+
+    def playerChange(self, p):
+        d = p.getCharacterCreateAttrs(True)
+
+        for a in self.players:
+            a.cmdout.sendCharacterChange(**d)
 
     def validPos(self, pos):
         x, y = pos
@@ -309,13 +375,27 @@ class GameMap(object):
         return True
 
 class GameMapList(object):
-    def __init__(self, mapCount):
+    def __init__(self, mapCount, maxActiveMaps):
         self.maps = [None] * (mapCount + 1)
-    
+        self.activeMaps = 0
+        self.maxActiveMaps = maxActiveMaps
+
     def __getitem__(self, n):
+        if n < 1:
+            raise IndexError()
         if self.maps[n] is None:
             self.maps[n] = GameMap(n)
+            self.activeMaps += 1
+            if self.activeMaps > self.maxActiveMaps:
+                self._removeUnusedMaps()
         return self.maps[n]
+
+    def _removeUnusedMaps(self):
+        for i, m in enumerate(self.maps):
+            if m is not None and m.isMapUnused():
+                m.unload()
+                self.maps[i] = None
+                self.activeMaps -= 1
 
 # Timer
 
@@ -348,10 +428,12 @@ def onTimer60():
 def loadMaps():
     mapCount = ServerConfig.getint('Core', 'MapCount')
     mapLoadingMode = ServerConfig.get('Core', 'MapLoadingMode').lower()
+    maxActiveMaps = ServerConfig.getint('Core', 'MaxActiveMapsCount')
 
-    corevars.mapData = GameMapList(mapCount)
 
     if mapLoadingMode == "full":
+        corevars.mapData = GameMapList(mapCount, mapCount)
+
         print "Cargando mapas... "
 
         for x in xrange(1, mapCount + 1):
@@ -364,6 +446,8 @@ def loadMaps():
         # Piedad, oh, piedad.
         gc.collect()
     elif mapLoadingMode == "lazy":
+        corevars.mapData = GameMapList(mapCount, maxActiveMaps)
+
         print "Carga de mapas en modo Lazy; se cargaran bajo demanda."
     else:
         raise Exception("Opcion no reconocida: MapLoadingMode=" \

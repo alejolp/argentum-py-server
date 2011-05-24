@@ -3,7 +3,9 @@
 #
 # Las rutas son relativas al pwd desde donde se inicia el servidor.
 #
-# El formato de este archivo es el que acepta el módulo ConfigParser de Python.
+# El formato de este archivo es el que acepta el módulo ConfigParser de Python,
+# el cual permite usar variables para simplificar los valores. Por ejemplo,
+# la variable "MapsFilesPath" esta definida en base a "BaseResourcesPath".
 #
 # Atencion: La codificación de caracteres del archivo es UTF-8. Usar un editor
 #           de texto que la soporte.
@@ -32,6 +34,16 @@ MapsFilesPath: %(BaseResourcesPath)s/Maps
 
 ; Cantidad de mapas.
 MapCount: 290
+
+; Maxima cantidad de mapas cargados en modo lazy. Para ahorrar memoria,
+; Cuando se supera el limite se descargan los mapas sin jugadores, por lo
+; que el limite real esta dado por:
+;
+;   max(MaxActiveMapsCount, PlayersCountLimit)
+;
+; Eso es, si el limite de mapas es 30 y hay 60 jugadores logeados, cada uno
+; en un mapa diferente, la cantidad de mapas en memoria va a ser 60.
+MaxActiveMapsCount: 30
 
 ; Modo de carga de mapas: "Lazy" o "Full".
 MapLoadingMode: Lazy

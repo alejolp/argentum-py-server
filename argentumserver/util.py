@@ -30,6 +30,9 @@ def debug_print(*args):
         print a,
     print
 
+def between(x, a, b):
+    return x >= a and x <= b
+
 class MyConfigParser(SafeConfigParser):
     def read(self, *args, **kwargs):
         ret = SafeConfigParser.read(self, *args, **kwargs)
@@ -49,9 +52,25 @@ class MyConfigParser(SafeConfigParser):
     def get(self, section, option, *args, **kwargs):
         return SafeConfigParser.get(self, section.lower(), option.lower(), *args, **kwargs)
 
+    def has_section(self, section):
+        return SafeConfigParser.has_section(self, section.lower())
+
     def getint(self, section, option):
         val = self.get(section, option)
         if "'" in val:
             val = val.split("'", 1)[0]
         return int(val)
+
+class positiverolist(object):
+    __slots__ = ('data',)
+    def __init__(self, data):
+        self.data = data
+
+    def __getitem__(self, i):
+        if i < 0:
+            raise IndexError('negative')
+        return self.data[i]
+
+    def __setitem__(self, i, v):
+        raise TypeError('read only list')
 

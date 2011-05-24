@@ -28,9 +28,7 @@ from aoprotocol import clientPackets, serverPackets, clientPacketsFlip
 from util import debug_print
 from gamerules import *
 from player import Player
-import aoprotocol
-import corevars as cv
-import constants
+import aoprotocol, gamerules, constants, corevars
 
 class CommandsDecoderException(Exception):
     """Faltan datos para decodificar un comando del cliente"""
@@ -145,10 +143,15 @@ class ClientCommandsDecoder(object):
 
         error = False
 
-        if not isValidPlayerName(playerName, False):
+        if not gamerules.isValidPlayerName(playerName, False):
+            prot.cmdout.sendErrorMsg("Nombre invalido")
             error = True
             debug_print("Nombre invalido:", repr(playerName))
-        elif cv.gameServer.playersLimitReached():
+        elif corevars.gameServer.playersLimitReached():
+            prot.cmdout.sendErrorMsg("Limite de jugadores alcanzado")
+            error = True
+        elif corevars.gameServer.isPlayerLogged(playerName):
+            prot.cmdout.sendErrorMsg("El jugador ya se encuentra logeado")
             error = True
         else:
             # La instancia de Player se crea recien cuando es válido.
@@ -173,22 +176,19 @@ class ClientCommandsDecoder(object):
         # PacketID
         cmd = buf.readInt8()
         msg = buf.readString()
-        # FIXME
-        for p in cv.gameServer.playersList():
-            p.cmdout.sendConsoleMsg(player.playerName + " dice: " + msg, \
-                constants.FONTTYPES['TALK'])
+        player.onTalk(msg, False)
 
     @CheckLogged
     def handleCmdWalk(self, prot, buf, player):
         cmd = buf.readInt8()
         heading = buf.readInt8()
-        # FIXME
+        player.move(heading)
 
     @CheckLogged
     def handleCmdOnline(self, prot, buf, player):
         cmd = buf.readInt8()
         player.cmdout.sendConsoleMsg(\
-            "Online: %d" % cv.gameServer.playersCount(), \
+            "Online: %d" % corevars.gameServer.playersCount(), \
             constants.FONTTYPES['SERVER'])
 
     @CheckLogged
@@ -200,7 +200,7 @@ class ClientCommandsDecoder(object):
     def handleCmdYell(self, prot, buf, player):
         cmd = buf.readInt8()
         msg = buf.readString()
-        # FIXME
+        player.onTalk(msg, True)
 
     @CheckLogged
     def handleCmdWhisper(self, prot, buf, player):
@@ -310,32 +310,33 @@ class ClientCommandsDecoder(object):
     @CheckLogged
     def handleCmdDrop(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        slot = buf.readInt8()
+        amount = buf.readInt16()
+        player.onDrop(slot, amount)
 
     @CheckLogged
     def handleCmdCastSpell(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        spellIdx = buf.readInt8()
+        player.onCastSpell(spellIdx)
 
     @CheckLogged
     def handleCmdLeftClick(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        x, y = buf.readInt8(), buf.readInt8()
+        player.onLookAtTile(x, y)
 
     @CheckLogged
     def handleCmdDoubleClick(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        x, y = buf.readInt8(), buf.readInt8()
+        player.onDoubleClick(x, y)
 
     @CheckLogged
     def handleCmdWork(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        skill = buf.readInt8()
+        player.onWork(skill)
 
     @CheckLogged
     def handleCmdUseSpellMacro(self, prot, buf, player):
@@ -388,8 +389,13 @@ class ClientCommandsDecoder(object):
     @CheckLogged
     def handleCmdChangeHeading(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        heading = buf.readInt8()
+        
+        if heading < 1 or heading > 4:
+            raise CriticalDecoderException('Invalid heading')
+
+        player.heading = heading
+        player.onCharacterChange()
 
     @CheckLogged
     def handleCmdModifySkills(self, prot, buf, player):
