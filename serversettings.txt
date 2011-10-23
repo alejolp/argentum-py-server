@@ -1,5 +1,5 @@
 #
-# Archivo de configuración de AONX Server.
+# Archivo de configuración de Dakara Server.
 #
 # Las rutas son relativas al pwd desde donde se inicia el servidor.
 #

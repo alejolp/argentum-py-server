@@ -1,5 +1,5 @@
-AONX Server
------------
+Dakara Server
+-------------
 
 Pequeño servidor de Argentum Online.
 
@@ -29,10 +29,10 @@ Acerca de Argentum Online
 Argentum Online es una marca registrada de Pablo Marquez. Para más información
 visitar: www.argentumonline.com.ar.
 
-Acerca de AONX
---------------
+Acerca de Dakara
+----------------
 
-AONX es una versión independiente de Argentum Online creada por Alejandro 
+Dakara es una versión independiente de Argentum Online creada por Alejandro 
 Santos. Si desea contactarse con el autor puede hacerlo por email a:
 
   ALEJOLP@ALEJOLP.COM.AR
