@@ -33,6 +33,31 @@ def debug_print(*args):
 def between(x, a, b):
     return x >= a and x <= b
 
+def espiral(pos, lim=100):
+    """Genera un patron de busqueda en forma de espiral."""
+    x, y = pos
+
+    yield (x, y)
+
+    d = 1
+    s = 1
+
+    while lim > 0:
+        for a in xrange(d):
+            x = x + s
+            lim = lim - 1
+            yield (x, y)
+            if lim == 0: return
+
+        for a in xrange(d):
+            y = y + s
+            lim = lim - 1
+            yield (x, y)
+            if lim == 0: return
+
+        s = s * -1
+        d = d + 1
+
 class MyConfigParser(SafeConfigParser):
     def read(self, *args, **kwargs):
         ret = SafeConfigParser.read(self, *args, **kwargs)

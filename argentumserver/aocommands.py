@@ -383,8 +383,8 @@ class ClientCommandsDecoder(object):
     @CheckLogged
     def handleCmdEquipItem(self, prot, buf, player):
         cmd = buf.readInt8()
-        raise CriticalDecoderException('Not Implemented')
-        # FIXME
+        slot = buf.readInt8()
+        player.onEquipItem(slot)
 
     @CheckLogged
     def handleCmdChangeHeading(self, prot, buf, player):

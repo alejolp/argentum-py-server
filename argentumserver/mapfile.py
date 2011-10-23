@@ -35,14 +35,15 @@ import util, corevars
 
        
 class MapFileTile(object):
-    __slots__ = ('blocked', 'layers', 'trigger', 'exit', 'npc', 'obj')
+    __slots__ = ('blocked', 'layers', 'trigger', 'exit', 'npc', 'objidx', 'objcant')
     def __init__(self):
         self.blocked = False
         self.layers = [None] * 4
         self.trigger = 0
         self.exit = None
         self.npc = None
-        self.obj = None
+        self.objidx = None
+        self.objcant = 0
 
     def __repr__(self):
         return "MapFileTile<" + ', '.join(["%s=%s" % (x, str(getattr(self, x))) for x in MapFileTile.__slots__]) + ">"
@@ -54,7 +55,7 @@ class MapFileTile(object):
 
     def objdata(self):
         if self.obj is not None:
-            return corevars.objData[self.obj[0]]
+            return corevars.objData[self.objidx]
         return None
 
 class MapFile(object):
@@ -169,12 +170,13 @@ def loadMapFile(mapNum, fileNameBasePath):
 
             # NPC.
             if tileFlags & 2:
+                # NpcIndex
                 tile.npc = infData.readInt16()
 
             # Obj.
             if tileFlags & 4:
                 # Index, Amount.
-                tile.obj = (infData.readInt16(), infData.readInt16())
+                tile.objidx, tile.objcant = (infData.readInt16(), infData.readInt16())
 
             mf.tiles.append(tile)
 

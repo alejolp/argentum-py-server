@@ -30,6 +30,9 @@ import re
 class GameLogicError(Exception):
     pass
 
+class NoFreeSpaceOnMap(Exception):
+    pass
+
 VALID_PLAYER_NAME = re.compile(r'^[ a-zA-Z]+$')
 
 def isValidPlayerName(name, create):

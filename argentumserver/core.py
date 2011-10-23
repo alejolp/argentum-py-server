@@ -170,7 +170,7 @@ class GameServer(object):
             return True
         return False
 
-    def playerJoin(self, p):
+    def playerJoin(self, p): 
         self._players.add(p)
         self._playersByName[p.playerName.lower()] = p
 
@@ -283,8 +283,7 @@ class GameMap(object):
     def playerJoin(self, p):
         debug_print("playerJoin", self.mapNum, p.pos)
 
-        if p.map is not None:
-            raise gamerules.GameLogicError('entrando a un mapa sin salir del act')
+        assert p.map is None, 'entrando a un mapa sin salir del actual'
 
         self.players.add(p)
 
@@ -305,6 +304,9 @@ class GameMap(object):
                 p.cmdout.sendCharacterCreate(**a.getCharacterCreateAttrs())
 
         p.sendUserCharIndexInServer()
+
+        # FIXME: Buscar otra forma de no tener que recorrer 10k tiles
+
         mf = self.mapFile
 
         for y in xrange(1, MAP_SIZE_Y + 1):
@@ -366,6 +368,12 @@ class GameMap(object):
     def validPos(self, pos):
         x, y = pos
 
+        if x < 1 or x > MAP_SIZE_X:
+            return False
+
+        if y < 1 or y > MAP_SIZE_Y:
+            return False
+
         if self.mapFile[x, y].blocked:
             return False
 
@@ -373,6 +381,47 @@ class GameMap(object):
             return False
 
         return True
+
+    def dropObjAt(self, objidx, amount, pos):
+        assert amount >= 1 and amount <= MAXINVITEMS
+        assert corevars.objData[objidx] is not None
+
+        found = False
+
+        for p in util.espiral(pos):
+            if not self.validPos(p):
+                continue
+
+            tile = self.mapFile[p]
+
+            if tile.objidx is None:
+                found = True
+                pos = p
+                break
+
+            if tile.objidx == objidx and tile.objcant + amount <= MAXINVITEMS:
+                amount += tile.objcant
+                found = True
+                pos = p
+                break
+
+        if not found:
+            raise NoFreeSpaceOnMap()
+
+        tile = self.mapFile[pos]
+        tile.objidx = objidx
+        tile.objcant = amount
+        self.onTileObjUpdated(pos)
+
+    def onTileObjUpdated(self, pos):
+        x, y = pos
+        obj = self.mapFile[x, y].objdata()
+
+        for p in self.players:
+            if obj is not None:
+                p.cmdout.sendObjectCreate(x, y, obj.GrhIndex)
+            else:
+                p.cmdout.sendObjectDelete(x, y)
 
 class GameMapList(object):
     def __init__(self, mapCount, maxActiveMaps):

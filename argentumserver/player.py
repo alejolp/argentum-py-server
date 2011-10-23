@@ -18,20 +18,30 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+import sys
+
 from constants import *
 import corevars as cv
-import gamerules
+import gamerules, util
 
 def moveTo(pos, d):
     newpos = list(pos)
     if d == DIR_N:
         newpos[1] -= 1
+        if newpos[1] < 1:
+            return None
     elif d == DIR_E:
         newpos[0] += 1
+        if newpos[0] > MAP_SIZE_X:
+            return None
     elif d == DIR_S:
         newpos[1] += 1
+        if newpos[1] > MAP_SIZE_Y:
+            return None
     elif d == DIR_W:
         newpos[0] -= 1
+        if newpos[0] < 1:
+            return None
     else:
         return None
     return newpos
@@ -44,7 +54,6 @@ class PlayerAttributes(object):
         self.attributes = [None] * 5
         self.skills = [None] * NUMSKILLS
         self.hechizos = [None] * 10
-        self.inventario = [None] * NUMINVSLOTS
         self.hambre = 0
         self.sed = 0
         self.hambreMax = 0
@@ -61,6 +70,81 @@ class PlayerAttributes(object):
         self.elu = 0
         self.exp = 0
 
+class PlayerInventory(object):
+    def __init__(self, player):
+        self.player = player
+        self.items = [[None, 0, False] for x in xrange(NUMINVSLOTS)]
+
+    def __getitem__(self, n):
+        assert n >= 1
+        return self.items[n - 1]
+
+    def __len__(self):
+        return len(self.items)
+
+    def addItem(self, objidx, amount):
+        """Agrega un nuevo objeto. Devuelve la lista de slots y cuanta
+        cantidad de objetos no se pudieron agregar al inv."""
+
+        assert amount > 0 and amount <= MAXINVITEMS
+        assert cv.objData[objidx] is not None
+
+        r = []
+        
+        # Busca algun slot que ya tenga el item.
+        for i, x in enumerate(self.items):
+            if x[0] == objidx and x[1] < MAXINVITEMS:
+                r.append(i+1)
+
+                x[1] += amount
+                if x[1] > MAXINVITEMS:
+                    amount = x[1] - MAXINVITEMS
+                    x[1] = MAXINVITEMS
+                else:
+                    amount = 0
+                    break
+
+        if amount > 0:
+            # Busca algun slot libre
+            for i, x in enumerate(self.items):
+                if x[0] is None:
+                    r.append(i+1)
+
+                    x[0] = objidx
+                    x[1] = amount
+                    x[2] = False
+                    amount = 0
+                    break
+
+        return r, amount
+
+    def isEmpty(self, slot):
+        ss = self[slot]
+
+        assert (ss[0] is None) == (ss[1] == 0)
+        return ss[0] is None
+
+    def dropItem(self, slot, amount):
+        assert slot >= 1 and util.between(amount, 1, MAXINVITEMS)
+        assert not self.isEmpty(slot)
+
+        invs = self[slot]
+
+        if invs[1] < amount:
+            return 0
+
+        objidx = invs[0]
+
+        if invs[1] == amount:
+            invs[0] = None
+            invs[1] = 0
+            invs[2] = False
+        else:
+            invs[1] -= amount
+
+    def sortItems(self):
+        self.items.sort(key=(lambda x: sys.maxint if x[0] is None else x[0]))
+
 class Player(object):
     """Un jugador"""
 
@@ -75,6 +159,7 @@ class Player(object):
         self.map = None
 
         self.privileges = PLAYERTYPE_USER
+        self.inventario = PlayerInventory(self)
 
         self.attrs = PlayerAttributes()
         self.attrs.chrclass = CLASES['Mage']
@@ -148,7 +233,7 @@ class Player(object):
         """slot, objIdx, name, amount, equipped, grhIdx, objType, hitMax, hit, defMax, defMin, price"""
         
         if slot is None:
-            for x in xrange(1, len(self.attrs.inventario) + 1):
+            for x in xrange(1, len(self.inventario) + 1):
                 self.sendInventory(x)
         else:
             # Ojo: slot empieza en 1.
@@ -175,6 +260,9 @@ class Player(object):
             self.map.playerMove(self, oldpos, newpos)
         except gamerules.GameLogicError, e: # Invalid pos
             self.sendPosUpdate()
+
+    def m(self, msg, t=FONTTYPES['INFO']):
+        self.cmdout.sendConsoleMsg(msg, t)
 
     def onCharacterChange(self):
         self.map.playerChange(self)
@@ -212,23 +300,70 @@ class Player(object):
 
     def onCastSpell(self, spellIdx):
         self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
-        
-    def onDrop(self, slot, amount):
-        self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
 
     def onWork(self, skill):
         pass
 
+    def onCustomCmd(self, cmd):
+        if cmd == "sortinv":
+            self.inventario.sortItems()
+            self.sendInventory()
+
     def onTalk(self, msg, yell):
         act = "dice" if not yell else "grita"
 
+        if msg.startswith("do "):
+            self.onCustomCmd(msg[3:])
+            return
+
         for p in cv.gameServer.playersList():
-            p.cmdout.sendConsoleMsg(self.playerName + " %s (%d, %d): " % (act, self.pos[0], self.pos[1]) + msg, \
-                FONTTYPES['TALK'])
+            p.cmdout.sendConsoleMsg(self.playerName + " %s (%d, %d): " % (act, self.pos[0], self.pos[1]) + msg, FONTTYPES['TALK'])
 
     def doPickUp(self):
+
+        tile = self.map.mapFile[self.pos]
+        if tile.objidx is None:
+            self.m("No hay nada para levantar.")
+            return
+
+        objidx, amount = tile.objidx, tile.objcant
+        r, amount_left = self.inventario.addItem(objidx, amount)
+        if amount_left > 0:
+            self.m("No se pudieron levantar todos los items.")
+        else:
+            tile.objidx = None
+        tile.objcant = amount_left
+
+        for x in r:
+            self.sendInventory(x)
+
+    def onDrop(self, slot, amount):
+        """Manejador del comando de tirar items al piso."""
+
+        ub = util.between
+
+        if not ub(slot, 1, NUMINVSLOTS) or not ub(amount, 1, MAXINVITEMS):
+            self.m("Nah")
+            return
+
+        if self.inventario.isEmpty(slot):
+            return
+
+        objidx = self.inventario.dropItem(slot, amount)
+        if objidx == 0:
+            self.m("No tienes esa cantidad.")
+            return
+
+        try:
+            self.map.dropObjAt(objidx, amount, self.pos)
+        except gamerules.NoFreeSpaceOnMap, e:
+            self.inventario.addItem(objidx, amount)
+
+        self.sendInventory()
+
+    def onEquipItem(self, slot):
         self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
-    
+
     def doAttack(self):
         self.cmdout.sendConsoleMsg("Sin implementar.", FONTTYPES['SERVER'])
 
