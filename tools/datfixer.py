@@ -19,20 +19,33 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import sys, os
+import sys, os, ConfigParser
 
 def main():
-    if len(sys.argv) < 2:
-        print "Forma de uso: datfixer.py archivo.dat"
+    if len(sys.argv) < 3:
+        print "Forma de uso: datfixer.py fix archivo.dat"
         sys.exit(1)
 
-    fn = sys.argv[1]
-    fixDatFile(fn, fn + ".fix")
+    if sys.argv[1] == "fix":
+        fn = sys.argv[2]
+        fixDatFile(fn, fn + ".fix")
 
-    # Hace un swap de los archivos. El archivo original queda con ext. ".old".
+        # Hace un swap de los archivos. El archivo original queda con 
+        # extension ".old".
 
-    os.rename(fn, fn + ".old")
-    os.rename(fn + ".fix", fn)
+#        os.rename(fn, fn + ".old")
+#        os.rename(fn + ".fix", fn)
+
+    if sys.argv[1] == "java":
+        r = ConfigParser.RawConfigParser()
+        f = open(sys.argv[2] + '.propperties', 'wb')
+        r.read([sys.argv[2]])
+        for s in r.sections():
+            f.write("; " + s + "\n")
+            for k, v in r.items(s):
+                f.write(s + "." + k + " = " + v + "\n")
+            f.write("\n")
+        f.close()
 
 def fixDatFile(fileNameSrc, fileNameDst):
     """
