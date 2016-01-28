@@ -27,7 +27,7 @@ ConnectionsCountLimitPerIP: 5
 PlayersCountLimit: 30
 
 ; Ruta base de los recursos del servidor.
-BaseResourcesPath: ../ServerResources
+BaseResourcesPath: ServerResources
 
 ; Ruta de acceso a los mapas.
 MapsFilesPath: %(BaseResourcesPath)s/Maps
@@ -53,4 +53,3 @@ DatFilesPath: %(BaseResourcesPath)s/Dat
 
 ; No modificar. Sanity check para validar la codificación.
 EncodingSanityCheck: áéíóú.
-
