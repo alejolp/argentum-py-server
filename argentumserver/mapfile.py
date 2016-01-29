@@ -54,7 +54,7 @@ class MapFileTile(object):
         return unicode(str(self))
 
     def objdata(self):
-        if self.obj is not None:
+        if self.objidx is not None:
             return corevars.objData[self.objidx]
         return None
 
